@@ -7,12 +7,15 @@ import '../../providers/booking_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/seat_allocation.dart';
 import '../../constants/colors.dart';
+import '../../utils/seat_zone.dart';
 import '../../widgets/zone_pill.dart';
 import '../../widgets/bus_diagram.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 
 // Seat letters left-to-right are A, B (left block, 2 seats) then C, D, E
-// (right block, 3 seats) - see lib/widgets/bus_diagram.dart for the layout.
+// (right block, 3 seats); row 12 is right-only (beside the rear door) and
+// row 13's rear bench runs A-F with no split - see lib/widgets/bus_diagram.dart
+// for the layout.
 String _sideDescription(String seatNumber) {
   final letter = seatNumber.isNotEmpty ? seatNumber[seatNumber.length - 1].toUpperCase() : '';
   switch (letter) {
@@ -40,16 +43,20 @@ class _SeatZoneInfo {
 }
 
 _SeatZoneInfo _zoneInfoFor(String seatNumber) {
-  final isStanding = seatNumber.toUpperCase().startsWith('STANDING');
-  final rowNum = isStanding ? null : int.tryParse(RegExp(r'^(\d+)').firstMatch(seatNumber)?.group(1) ?? '');
-  if (isStanding) {
-    return const _SeatZoneInfo('standing', 'Standing · Near Rear Door', 'Standing space near the rear door for a quick exit.');
-  } else if (rowNum != null && rowNum <= 3) {
-    return _SeatZoneInfo('priority', 'Priority Zone · Row $rowNum', 'Near front door · ${_sideDescription(seatNumber)}');
-  } else if (rowNum == 12) {
-    return _SeatZoneInfo('general', 'Rear Bench · Row 12', 'Rear bench seat · ${_sideDescription(seatNumber)}');
+  final zone = zoneForSeatNumber(seatNumber);
+  switch (zone.zoneKey) {
+    case 'standing':
+      return const _SeatZoneInfo('standing', 'Standing · Rear Aisle', 'Standing space near the rear door for a quick exit.');
+    case 'priority':
+      return _SeatZoneInfo('priority', 'Priority Zone · Row ${zone.rowNumber}', 'Near front door · ${_sideDescription(seatNumber)}');
+    case 'limited':
+      if (zone.rowNumber == 13) {
+        return _SeatZoneInfo('limited', 'Limited Zone · Rear Bench (Row 13)', 'Rear bench seat · ${_sideDescription(seatNumber)}');
+      }
+      return _SeatZoneInfo('limited', 'Limited Zone · Row ${zone.rowNumber}', _sideDescription(seatNumber));
+    default:
+      return _SeatZoneInfo('general', 'General Zone · Row ${zone.rowNumber ?? 5}', _sideDescription(seatNumber));
   }
-  return _SeatZoneInfo('general', 'General Zone · Row ${rowNum ?? 5}', _sideDescription(seatNumber));
 }
 
 class AllocationResultScreen extends StatelessWidget {
@@ -75,27 +82,10 @@ class AllocationResultScreen extends StatelessWidget {
     final alighting = alloc?.alightingStop ?? 'Jaffna Main Bus Stand';
 
     final isStanding = seatNumber.toUpperCase().startsWith('STANDING');
-    final rowNum = isStanding ? null : int.tryParse(RegExp(r'^(\d+)').firstMatch(seatNumber)?.group(1) ?? '');
-    final String zoneKey;
-    final String zoneLabel;
-    final String positionDescription;
-    if (isStanding) {
-      zoneKey = 'standing';
-      zoneLabel = 'Standing · Near Rear Door';
-      positionDescription = 'Standing space near the rear door for a quick exit.';
-    } else if (rowNum != null && rowNum <= 3) {
-      zoneKey = 'priority';
-      zoneLabel = 'Priority Zone · Row $rowNum';
-      positionDescription = 'Near front door · ${_sideDescription(seatNumber)}';
-    } else if (rowNum == 12) {
-      zoneKey = 'general';
-      zoneLabel = 'Rear Bench · Row 12';
-      positionDescription = 'Rear bench seat · ${_sideDescription(seatNumber)}';
-    } else {
-      zoneKey = 'general';
-      zoneLabel = 'General Zone · Row ${rowNum ?? 5}';
-      positionDescription = _sideDescription(seatNumber);
-    }
+    final info = _zoneInfoFor(seatNumber);
+    final zoneKey = info.zoneKey;
+    final zoneLabel = info.zoneLabel;
+    final positionDescription = info.positionDescription;
     final zoneBg = AppColors.getZoneBg(zoneKey);
     final zoneAccent = AppColors.getZoneAccent(zoneKey);
     final zoneText = AppColors.getZoneText(zoneKey);
@@ -291,38 +281,7 @@ class AllocationResultScreen extends StatelessWidget {
                 border: Border.all(color: AppColors.borderLight),
               ),
               child: Column(
-                children: [
-                  if (isStanding)
-                    _buildWhyRow(
-                      Icons.directions_walk,
-                      AppColors.standingAccent,
-                      'Short-Distance Standing Preference',
-                      'Seats were nearly full, so short-distance passengers stand to keep seats free for longer journeys.',
-                    )
-                  else
-                    _buildWhyRow(
-                      Icons.shield_outlined,
-                      AppColors.priorityAccent,
-                      'Safety Preference Matched',
-                      'Your active safety preference granted top-tier Priority Zone access.',
-                    ),
-                  const Divider(height: 16),
-                  _buildWhyRow(
-                    Icons.sensor_door_outlined,
-                    AppColors.generalAccent,
-                    isStanding ? 'Rear Door Proximity' : 'Front Door Proximity',
-                    isStanding
-                        ? 'Positioned near the rear exit for a quick, low-friction alighting.'
-                        : 'Positioned near the front entrance for swift exit & conductor visibility.',
-                  ),
-                  const Divider(height: 16),
-                  _buildWhyRow(
-                    Icons.swap_horizontal_circle_outlined,
-                    AppColors.standingAccent,
-                    'Gender & Standing Spacing',
-                    'Algorithm enforced maximum buffer from standing congestion.',
-                  ),
-                ],
+                children: _whyRowsFor(zoneKey),
               ),
             ),
             const SizedBox(height: 24),
@@ -577,6 +536,59 @@ class AllocationResultScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  // "Why this seat?" explanation rows, accurate to the zone actually
+  // allocated - each zone has its own real reason, rather than one
+  // priority-flavoured explanation shown for every non-standing seat.
+  List<Widget> _whyRowsFor(String zoneKey) {
+    late final List<(IconData, Color, String, String)> rows;
+    switch (zoneKey) {
+      case 'priority':
+        rows = [
+          (Icons.shield_outlined, AppColors.priorityAccent, 'Safety Preference Matched',
+              'Your active safety preference, mobility need, or pregnancy granted top-tier Priority Zone access.'),
+          (Icons.sensor_door_outlined, AppColors.generalAccent, 'Front Door Proximity',
+              'Priority seats are picked nearest to the front entrance among the free ones, for swift exit & conductor visibility.'),
+          (Icons.swap_horizontal_circle_outlined, AppColors.standingAccent, 'Gender-Aware Spacing',
+              'The algorithm still checks nearby seats to minimise sitting directly next to a different gender.'),
+        ];
+      case 'limited':
+        rows = [
+          (Icons.event_seat_outlined, AppColors.limitedAccent, 'Priority & General Were Full',
+              'Both closer zones were full, so you were placed in the Limited zone (rows 7-13) at the rear.'),
+          (Icons.swap_horizontal_circle_outlined, AppColors.standingAccent, 'Gender-Aware Spacing',
+              'Among the free Limited seats, the one with the fewest opposite-gender neighbours was picked.'),
+          (Icons.arrow_upward, AppColors.generalAccent, 'Closest Available Row',
+              'A small penalty for rows further from the front keeps you as close to the action as the zone allows.'),
+        ];
+      case 'standing':
+        rows = [
+          (Icons.event_busy_outlined, AppColors.standingAccent, 'Bus Fully Seated',
+              'Priority, General and Limited were all full when you were allocated - standing was the only room left.'),
+          (Icons.sensor_door_outlined, AppColors.generalAccent, 'Rear Door Proximity',
+              'Positioned near the rear exit for a quick, low-friction alighting.'),
+          (Icons.groups_outlined, AppColors.standingAccent, '6-Person Standing Cap',
+              'Standing is capped at 6 passengers to keep the aisle safe and manageable.'),
+        ];
+      default: // general
+        rows = [
+          (Icons.event_seat_outlined, AppColors.generalAccent, 'General Zone Placement',
+              'No priority need was flagged (or the Priority zone was full), so you were seated in General (rows 4-6).'),
+          (Icons.swap_horizontal_circle_outlined, AppColors.standingAccent, 'Gender-Aware Spacing',
+              'Among the free General seats, the one with the fewest opposite-gender neighbours was picked.'),
+          (Icons.arrow_upward, AppColors.generalAccent, 'Closest Available Row',
+              'A small penalty for rows further from the front keeps you as close to the front as the zone allows.'),
+        ];
+    }
+
+    final widgets = <Widget>[];
+    for (var i = 0; i < rows.length; i++) {
+      if (i > 0) widgets.add(const Divider(height: 16));
+      final (icon, color, title, subtitle) = rows[i];
+      widgets.add(_buildWhyRow(icon, color, title, subtitle));
+    }
+    return widgets;
   }
 
   Widget _buildWhyRow(IconData icon, Color color, String title, String subtitle) {

@@ -12,6 +12,7 @@ class JourneyInstance {
   final String status;
   final int priorityOccupied;
   final int generalOccupied;
+  final int limitedOccupied;
 
   JourneyInstance({
     required this.journeyId,
@@ -26,7 +27,8 @@ class JourneyInstance {
     required this.crowdingLevel,
     required this.status,
     this.priorityOccupied = 3,
-    this.generalOccupied = 12,
+    this.generalOccupied = 5,
+    this.limitedOccupied = 8,
   });
 
   Map<String, dynamic> toMap() {
@@ -44,6 +46,7 @@ class JourneyInstance {
       'status': status,
       'priority_occupied': priorityOccupied,
       'general_occupied': generalOccupied,
+      'limited_occupied': limitedOccupied,
     };
   }
 
@@ -65,7 +68,8 @@ class JourneyInstance {
       crowdingLevel: map['crowding_level'] ?? 'moderate',
       status: map['status'] ?? 'in_transit',
       priorityOccupied: map['priority_occupied'] ?? 3,
-      generalOccupied: map['general_occupied'] ?? 12,
+      generalOccupied: map['general_occupied'] ?? 5,
+      limitedOccupied: map['limited_occupied'] ?? 8,
     );
   }
 }

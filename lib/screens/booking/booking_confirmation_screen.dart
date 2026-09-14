@@ -195,6 +195,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                 children: [
                   _seatCountChip('Priority', bus.availablePrioritySeats, AppColors.priorityAccent),
                   _seatCountChip('General', bus.availableGeneralSeats, AppColors.generalAccent),
+                  _seatCountChip('Limited', bus.availableLimitedSeats, AppColors.limitedAccent),
                   _seatCountChip('Standing', bus.availableStanding, AppColors.standingAccent),
                 ],
               ),
@@ -356,6 +357,20 @@ class BookingConfirmationScreen extends StatelessWidget {
               _miniChip('Elderly', companion.mobilityStatus == 'elderly', () => bookingProvider.updateCompanion(index, mobilityStatus: 'elderly')),
             ],
           ),
+          if (companion.gender == 'female') ...[
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Pregnant', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                Switch(
+                  value: companion.pregnant,
+                  activeColor: AppColors.priorityAccent,
+                  onChanged: (val) => bookingProvider.updateCompanion(index, pregnant: val),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -22,29 +22,27 @@ class _Dims {
   double get aisleWidth => 26.0 * scale;
   double get smallGap => 4.0 * scale;
   double get rowSpacing => 4.0 * scale;
-  double get standingSize => 16.0 * scale;
-  double get halfRow => (seatHeight + rowSpacing) / 2;
+  double get standingSize => 20.0 * scale;
   double get leftBlockWidth => seatWidth * 2 + smallGap;
   double get rightBlockWidth => seatWidth * 3 + smallGap * 2;
   double get contentWidth => leftBlockWidth + aisleWidth + rightBlockWidth;
 }
 
-// Physical seat map for a Route 87 bus, drawn top (front) to bottom (rear):
-//   - Driver seat + front door at the very front, door on the left (the
-//     boarding side).
-//   - From row 1 onward, the right (3-seat) column is offset half a row
-//     behind the left (2-seat) column - right-row-1 sits between
-//     left-row-1 and left-row-2, and so on down the bus. The two columns
-//     run on independent timelines, each with its own row numbering.
-//   - Because the rear door interrupts the left column (rows 1-10, then
-//     the door) but not the right column, the accumulated half-row offset
-//     lets the right column fit one extra row (11) in next to the door -
-//     the space that would otherwise go to waste.
-//   - 6 standing spots (plain circles, all styled the same) sit in the
-//     aisle alongside the Limited Standing rows, filling from the
-//     rearmost spot (closest to the door) first.
-//   - The rear bench (row 12): 6 seats spanning the same width as every
-//     other row - not stretched wider than the rest of the bus.
+// Physical seat map for a Route 87 bus, drawn top (front) to bottom (rear) -
+// see lib/services/allocation_service.dart, which allocates against this
+// same structure:
+//   PRIORITY zone - rows 1-3, 5 seats/row (A,B left / C,D,E right) = 15
+//   GENERAL zone  - rows 4-6, same layout                          = 15
+//   LIMITED zone  - rows 7-11 same layout (25) + row 12, a right-only
+//                   3-seat row (C,D,E) beside the rear door, since the
+//                   left side is taken up by the door itself (3) + row
+//                   13, a 6-seat rear bench A-F with no left/right
+//                   split (6)                                     = 34
+//   STANDING      - a separate 6-person cap, not extra seats - 6 spots
+//                   spread down the aisle alongside the Limited rows
+//                   (7-11), filling from the rearmost spot first
+// Driver seat + front door sit at the very front (door on the left, the
+// boarding side); a rear door sits after row 11, under the left column.
 class BusDiagram extends StatelessWidget {
   final String allocatedSeat; // e.g. "5B", "3A", or "Standing-4"
   // Extra seats to highlight alongside allocatedSeat - used for group
@@ -60,10 +58,14 @@ class BusDiagram extends StatelessWidget {
     this.standingCapacity = 6,
   });
 
-  static const int _leftRows = 10; // left column: rows 1-10, then the rear door
-  static const int _rightRows = 11; // right column: rows 1-11 (11 is the extra row by the door)
-  static const int _standingRowsStart = 7; // Limited Standing zone: rows 7-10
-  static const int _standingSpots = 6;
+  static const List<int> _regularRows = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+  // Right-only row (no left pair - "Rear Door" occupies that space on the
+  // left) that fills the space beside the rear door.
+  static const int _extraRightRow = 12;
+  static const int _rearBenchRow = 13;
+  // Standing spots sit in the aisle alongside the Limited rows (7-11),
+  // filling from the rearmost spot first.
+  static const int _standingRowsStart = 7;
   static const double _baseContentWidth = 100.0 + 26.0 + 152.0; // reference width at scale 1.0
 
   List<String> get _allAllocatedSeats => [allocatedSeat, ...extraAllocatedSeats];
@@ -84,7 +86,7 @@ class BusDiagram extends StatelessWidget {
       if (parsed != null && parsed >= 1 && parsed <= standingCapacity) {
         indices.add(parsed);
       } else {
-        indices.add(1); // Legacy/non-numeric label (e.g. "Standing-Front") highlights the first (rearmost) slot.
+        indices.add(1); // Legacy/non-numeric label highlights the first slot.
       }
     }
     return indices;
@@ -118,7 +120,7 @@ class BusDiagram extends StatelessWidget {
               const SizedBox(height: 12),
               _buildFrontCap(dims),
               const SizedBox(height: 6),
-              _buildStaggeredBody(dims),
+              _buildSeatBody(dims),
               const SizedBox(height: 10),
               _buildRearBench(dims),
             ],
@@ -136,7 +138,8 @@ class BusDiagram extends StatelessWidget {
       children: [
         _legendChip('PRIORITY', AppColors.priorityAccent, AppColors.priorityBg),
         _legendChip('GENERAL', AppColors.generalAccent, AppColors.generalBg),
-        _legendChip('LIMITED STANDING', AppColors.standingAccent, AppColors.standingBg),
+        _legendChip('LIMITED', AppColors.limitedAccent, AppColors.limitedBg),
+        _legendChip('STANDING', AppColors.standingIconAccent, AppColors.standingIconBg),
       ],
     );
   }
@@ -227,18 +230,14 @@ class BusDiagram extends StatelessWidget {
     if (rowNum <= 6) {
       return const _RowZone(bg: AppColors.generalBg, accent: AppColors.generalAccent, text: AppColors.generalText);
     }
-    return const _RowZone(bg: AppColors.standingBg, accent: AppColors.standingAccent, text: AppColors.standingText);
+    return const _RowZone(bg: AppColors.limitedBg, accent: AppColors.limitedAccent, text: AppColors.limitedText);
   }
 
-  // The two columns run on independent timelines: the left (2-seat) column
-  // is a plain top-down list of rows 1-10 then the rear door; the right
-  // (3-seat) column starts half a row later and lists rows 1-11. Because
-  // the columns are different total heights, they're laid out with
-  // IntrinsicHeight + CrossAxisAlignment.stretch so the shorter (left)
-  // column just leaves blank space at the bottom while the taller (right)
-  // column's extra row visibly extends past it, next to the rear door -
-  // exactly the "space near the rear door gets filled" effect.
-  Widget _buildStaggeredBody(_Dims dims) {
+  // Left (2-seat) and right (3-seat) blocks are built as independent
+  // stacked columns - same row numbering, same height per row, just laid
+  // out side by side with the aisle (and its standing spots) between them,
+  // plus "Rear Door" appended under the left column only.
+  Widget _buildSeatBody(_Dims dims) {
     return IntrinsicHeight(
       key: const Key('busSeatBody'),
       child: Row(
@@ -247,8 +246,8 @@ class BusDiagram extends StatelessWidget {
         children: [
           Column(
             children: [
-              for (var rowNum = 1; rowNum <= _leftRows; rowNum++) ...[
-                _buildLeftPair(dims, rowNum),
+              for (final row in _regularRows) ...[
+                _buildLeftPair(dims, row),
                 SizedBox(height: dims.rowSpacing),
               ],
               SizedBox(
@@ -260,11 +259,14 @@ class BusDiagram extends StatelessWidget {
           SizedBox(width: dims.aisleWidth, child: _buildAisleColumn(dims)),
           Column(
             children: [
-              SizedBox(height: dims.halfRow), // half-row stagger
-              for (var rowNum = 1; rowNum <= _rightRows; rowNum++) ...[
-                _buildRightTriple(dims, rowNum),
+              for (final row in _regularRows) ...[
+                _buildRightTriple(dims, row),
                 SizedBox(height: dims.rowSpacing),
               ],
+              // The right column has no rear door to make room for, so it
+              // fits one extra 3-seat row (12) in next to it - the space
+              // that would otherwise go to waste beside "Rear Door".
+              _buildRightTriple(dims, _extraRightRow),
             ],
           ),
         ],
@@ -304,9 +306,10 @@ class BusDiagram extends StatelessWidget {
     );
   }
 
-  // 6 standing spots, evenly spaced down the aisle alongside the Limited
-  // Standing rows - all styled identically, no side to choose. Slot 1
-  // (rendered last/lowest, nearest the rear door) fills first.
+  // 6 standing spots, spread down the aisle alongside the Limited rows
+  // (7-11) - a hard headcount cap, not extra seats. All styled identically,
+  // no side to choose. Slot 1 (rendered last/lowest, nearest the rear
+  // door) fills first.
   Widget _buildAisleColumn(_Dims dims) {
     return Column(
       children: [
@@ -314,10 +317,10 @@ class BusDiagram extends StatelessWidget {
         Expanded(
           child: Column(
             children: [
-              for (var i = 0; i < _standingSpots; i++)
+              for (var i = 0; i < standingCapacity; i++)
                 Expanded(
                   child: Center(
-                    child: _buildStandingIcon(dims, isMine: _standingAllocatedIndices.contains(_standingSpots - i)),
+                    child: _buildStandingIcon(dims, isMine: _standingAllocatedIndices.contains(standingCapacity - i)),
                   ),
                 ),
             ],
@@ -327,10 +330,10 @@ class BusDiagram extends StatelessWidget {
     );
   }
 
-  // Rear bench (row 12): 6 seats spanning the same width as every other
-  // row, same height as every other seat in the bus.
+  // Rear bench (row 13): 6 seats spanning the same width as every other
+  // row, same height as every other seat in the bus, no left/right split.
   Widget _buildRearBench(_Dims dims) {
-    const zone = _RowZone(bg: AppColors.standingBg, accent: AppColors.standingAccent, text: AppColors.standingText);
+    final zone = _zoneForRow(_rearBenchRow);
     const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
     assert(letters.length == 6, 'Rear bench must render exactly 6 seats');
 
@@ -349,7 +352,7 @@ class BusDiagram extends StatelessWidget {
             SizedBox(
               width: benchSeatWidth,
               height: dims.seatHeight,
-              child: _buildSeatCell(dims, '12${letters[i]}', zone.bg, zone.accent),
+              child: _buildSeatCell(dims, '$_rearBenchRow${letters[i]}', zone.bg, zone.accent),
             ),
           ],
         ],
@@ -467,12 +470,12 @@ class BusDiagram extends StatelessWidget {
       width: dims.standingSize,
       height: dims.standingSize,
       decoration: BoxDecoration(
-        color: AppColors.standingAccent.withOpacity(0.3),
+        color: AppColors.standingIconAccent.withOpacity(0.3),
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.standingAccent.withOpacity(0.7)),
+        border: Border.all(color: AppColors.standingIconAccent.withOpacity(0.7)),
       ),
       alignment: Alignment.center,
-      child: Icon(Icons.accessibility_new, size: 11 * dims.scale, color: AppColors.standingAccent),
+      child: Icon(Icons.accessibility_new, size: 11 * dims.scale, color: AppColors.standingIconAccent),
     );
   }
 }

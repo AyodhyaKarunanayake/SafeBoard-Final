@@ -7,6 +7,9 @@ class Passenger {
   final String mobilityStatus; // none, wheelchair, walking_aid, elderly
   final String phoneNumber;
   final bool safetyPreference;
+  // Priority-zone eligibility criterion alongside safetyPreference and
+  // mobilityStatus - see AllocationService._isPriorityEligible.
+  final bool pregnant;
   final DateTime createdDate;
   final DateTime updatedDate;
   // Index into the preset avatar palette (see profile_screen.dart) - stands
@@ -27,6 +30,7 @@ class Passenger {
     required this.createdDate,
     required this.updatedDate,
     this.avatarColorIndex = 0,
+    this.pregnant = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -39,6 +43,7 @@ class Passenger {
       'mobility_status': mobilityStatus,
       'phone_number': phoneNumber,
       'safety_preference': safetyPreference,
+      'pregnant': pregnant,
       'created_date': createdDate.toIso8601String(),
       'updated_date': updatedDate.toIso8601String(),
       'avatar_color_index': avatarColorIndex,
@@ -55,6 +60,7 @@ class Passenger {
       mobilityStatus: map['mobility_status'] ?? 'none',
       phoneNumber: map['phone_number'] ?? '',
       safetyPreference: map['safety_preference'] ?? false,
+      pregnant: map['pregnant'] ?? false,
       createdDate: map['created_date'] != null
           ? DateTime.parse(map['created_date'])
           : DateTime.now(),
@@ -73,6 +79,7 @@ class Passenger {
     String? mobilityStatus,
     String? phoneNumber,
     bool? safetyPreference,
+    bool? pregnant,
     int? avatarColorIndex,
   }) {
     return Passenger(
@@ -84,6 +91,7 @@ class Passenger {
       mobilityStatus: mobilityStatus ?? this.mobilityStatus,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       safetyPreference: safetyPreference ?? this.safetyPreference,
+      pregnant: pregnant ?? this.pregnant,
       createdDate: createdDate,
       updatedDate: DateTime.now(),
       avatarColorIndex: avatarColorIndex ?? this.avatarColorIndex,

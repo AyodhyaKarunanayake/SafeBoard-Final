@@ -1,7 +1,7 @@
 class Seat {
   final String seatId;
   final String busId;
-  final String seatNumber; // 1A, 1B ... 8A, 8B
+  final String seatNumber; // 1A, 1B ... 13A-13F (see AllocationService for the full 64-seat map)
   final String seatZone; // priority, general, standing
   final String seatType; // window, aisle
   final double positionX;

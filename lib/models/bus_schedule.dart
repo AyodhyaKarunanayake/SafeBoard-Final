@@ -15,6 +15,13 @@ class BusSchedule {
   final int totalPrioritySeats;
   final int availableGeneralSeats;
   final int totalGeneralSeats;
+  // Limited zone: rows 7-11 (5 seats/row) + row 12's right-only 3-seat row
+  // + row 13's 6-seat rear bench = 34 seats total - still a real booked
+  // seat, just further back.
+  final int availableLimitedSeats;
+  final int totalLimitedSeats;
+  // Standing is a hard 6-person cap, entirely separate from the 64 seats
+  // above - not a zone of rows.
   final int availableStanding;
   final int totalStanding;
   final String crowdingLevel; // 'low', 'moderate', 'high', 'critical'
@@ -35,11 +42,13 @@ class BusSchedule {
     required this.endPoint,
     required this.stops,
     required this.availablePrioritySeats,
-    this.totalPrioritySeats = 12,
+    this.totalPrioritySeats = 15,
     required this.availableGeneralSeats,
-    this.totalGeneralSeats = 30,
+    this.totalGeneralSeats = 15,
+    required this.availableLimitedSeats,
+    this.totalLimitedSeats = 34,
     required this.availableStanding,
-    this.totalStanding = 18,
+    this.totalStanding = 6,
     required this.crowdingLevel,
     required this.fareLkr,
     required this.durationMinutes,

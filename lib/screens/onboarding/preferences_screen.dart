@@ -141,7 +141,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'SafeBoard Three-Zone System',
+                    'SafeBoard Four-Zone System',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
@@ -152,19 +152,25 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                   _buildZoneGuideRow(
                     'priority',
                     'Rows 1-3 (Front Door)',
-                    'Allocated first to safety-preference & mobility passengers.',
+                    'Allocated first to safety-preference, mobility & pregnancy needs.',
                   ),
                   const Divider(height: 16),
                   _buildZoneGuideRow(
                     'general',
-                    'Rows 4-8 (Standard)',
+                    'Rows 4-6 (Standard)',
                     'Proximity rules maintain comfortable distance between passengers.',
+                  ),
+                  const Divider(height: 16),
+                  _buildZoneGuideRow(
+                    'limited',
+                    'Rows 7-13 (Rear)',
+                    'Filled once Priority and General are full - still a real seat.',
                   ),
                   const Divider(height: 16),
                   _buildZoneGuideRow(
                     'standing',
                     'Rear Aisle (Standing)',
-                    'Soft limit at 80% capacity; hard stop at 100% capacity.',
+                    'A separate, hard cap of 6 - only used once every seat is taken.',
                   ),
                 ],
               ),

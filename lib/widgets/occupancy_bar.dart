@@ -5,6 +5,7 @@ class OccupancyBar extends StatelessWidget {
   final double percentage; // 0.0 - 1.0
   final int priorityCount;
   final int generalCount;
+  final int limitedCount;
   final int standingCount;
 
   const OccupancyBar({
@@ -12,6 +13,7 @@ class OccupancyBar extends StatelessWidget {
     required this.percentage,
     required this.priorityCount,
     required this.generalCount,
+    required this.limitedCount,
     required this.standingCount,
   });
 
@@ -65,9 +67,10 @@ class OccupancyBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildMiniCounter('Priority', '$priorityCount/12', AppColors.priorityAccent),
-            _buildMiniCounter('General', '$generalCount/30', AppColors.generalAccent),
-            _buildMiniCounter('Standing', '$standingCount/18', AppColors.standingAccent),
+            _buildMiniCounter('Priority', '$priorityCount/15', AppColors.priorityAccent),
+            _buildMiniCounter('General', '$generalCount/15', AppColors.generalAccent),
+            _buildMiniCounter('Limited', '$limitedCount/34', AppColors.limitedAccent),
+            _buildMiniCounter('Standing', '$standingCount/6', AppColors.standingAccent),
           ],
         ),
       ],

@@ -10,11 +10,14 @@ class JourneyProvider with ChangeNotifier {
   SeatAllocation? _currentAllocation;
   JourneyInstance? _activeJourney;
 
-  // Real-time simulated / Firestore state
-  int _currentOccupancy = 27; // Total occupied out of 42
-  int _standingCount = 4; // Standing out of 18
+  // Real-time simulated / Firestore state. The bus holds 64 seats (15
+  // priority + 15 general + 34 limited) plus a separate 6-person standing
+  // cap - see lib/services/allocation_service.dart for the real layout.
+  int _currentOccupancy = 34; // Total occupied out of 64 seats
+  int _standingCount = 2; // Standing out of 6
   final int _priorityOccupied = 3;
-  final int _generalOccupied = 20;
+  final int _generalOccupied = 9;
+  final int _limitedOccupied = 22;
   final String _currentStop = 'N Colombo Fort';
   String _crowdingLevel = 'moderate';
   bool _isJourneyActive = false;
@@ -25,6 +28,7 @@ class JourneyProvider with ChangeNotifier {
   int get standingCount => _standingCount;
   int get priorityOccupied => _priorityOccupied;
   int get generalOccupied => _generalOccupied;
+  int get limitedOccupied => _limitedOccupied;
   String get currentStop => _currentStop;
   String get crowdingLevel => _crowdingLevel;
   bool get isJourneyActive => _isJourneyActive;
@@ -40,9 +44,10 @@ class JourneyProvider with ChangeNotifier {
   void updateOccupancy(int newOccupancy, int newStanding) {
     _currentOccupancy = newOccupancy;
     _standingCount = newStanding;
-    if (_currentOccupancy > 40) {
+    // Thresholds scaled to the real 64-seat total (90% / 75%).
+    if (_currentOccupancy > 58) {
       _crowdingLevel = 'critical';
-    } else if (_currentOccupancy > 35) {
+    } else if (_currentOccupancy > 48) {
       _crowdingLevel = 'high';
     } else {
       _crowdingLevel = 'moderate';

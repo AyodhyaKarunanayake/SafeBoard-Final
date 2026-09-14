@@ -7,23 +7,27 @@ import '../services/allocation_service.dart';
 
 // Algorithm-relevant details for an extra passenger in a group booking -
 // deliberately scoped to just what allocateSeat() actually consumes
-// (gender, mobility, safety preference), not a full passenger profile.
+// (gender, mobility, safety preference, pregnancy), not a full passenger
+// profile.
 class CompanionPreference {
   final String gender;
   final String mobilityStatus;
   final bool safetyPreference;
+  final bool pregnant;
 
   const CompanionPreference({
     this.gender = 'female',
     this.mobilityStatus = 'none',
     this.safetyPreference = false,
+    this.pregnant = false,
   });
 
-  CompanionPreference copyWith({String? gender, String? mobilityStatus, bool? safetyPreference}) {
+  CompanionPreference copyWith({String? gender, String? mobilityStatus, bool? safetyPreference, bool? pregnant}) {
     return CompanionPreference(
       gender: gender ?? this.gender,
       mobilityStatus: mobilityStatus ?? this.mobilityStatus,
       safetyPreference: safetyPreference ?? this.safetyPreference,
+      pregnant: pregnant ?? this.pregnant,
     );
   }
 }
@@ -38,9 +42,9 @@ class BookingProvider with ChangeNotifier {
   bool _isAllocating = false;
   SeatAllocation? _lastAllocation;
 
-  // Group booking (more than 1 seat at a time). Capped at the allocation
-  // engine's candidate-seat-list size so simultaneous passengers never
-  // collide onto the same physical seat within one booking.
+  // Group booking (more than 1 seat at a time). Capped well under the
+  // 6-seat rear bench (the largest single contiguous block in the bus), so
+  // a group can always be tried for adjacent seating in one row.
   static const int maxSeatCount = 5;
   int _seatCount = 1;
   final List<CompanionPreference> _companions = [];
@@ -293,12 +297,13 @@ class BookingProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void updateCompanion(int index, {String? gender, String? mobilityStatus, bool? safetyPreference}) {
+  void updateCompanion(int index, {String? gender, String? mobilityStatus, bool? safetyPreference, bool? pregnant}) {
     if (index < 0 || index >= _companions.length) return;
     _companions[index] = _companions[index].copyWith(
       gender: gender,
       mobilityStatus: mobilityStatus,
       safetyPreference: safetyPreference,
+      pregnant: pregnant,
     );
     notifyListeners();
   }
@@ -376,44 +381,44 @@ class BookingProvider with ChangeNotifier {
 
     final forward = <BusSchedule>[
       _trip(route87, 'BUS_NB_8701', 'NB-8701 (Northern Sunrise Express)', 'Semi Luxury',
-          dep(5, 30), 480, route87.startPoint, route87.endPoint, 10, 24, 16, 'low', 2400, 'K. Sivalingam', 4.9),
+          dep(5, 30), 480, route87.startPoint, route87.endPoint, 11, 13, 24, 5, 'low', 2400, 'K. Sivalingam', 4.9),
       _trip(route87, 'BUS_NB_8705', 'NB-8705 (Jaffna Highway Cruiser)', 'Normal',
-          dep(7, 0), 480, route87.startPoint, route87.endPoint, 8, 20, 14, 'low', 2400, 'R. Thevarajah', 4.9),
+          dep(7, 0), 480, route87.startPoint, route87.endPoint, 9, 11, 20, 4, 'low', 2400, 'R. Thevarajah', 4.9),
       _trip(route87, 'BUS_NB_8710', 'NB-8710 (SafeBoard Shield Express)', 'Semi Luxury',
-          dep(8, 30), 480, route87.startPoint, route87.endPoint, 9, 18, 12, 'moderate', 2400, 'M. Fernando', 4.9),
+          dep(8, 30), 480, route87.startPoint, route87.endPoint, 7, 8, 14, 2, 'moderate', 2400, 'M. Fernando', 4.9),
       _trip(route87, 'BUS_NB_8715', 'NB-8715 (Yal Devi Semi-Express)', 'Normal',
-          dep(10, 15), 510, route87.startPoint, route87.endPoint, 6, 14, 8, 'moderate', 2200, 'A. Tharmalingam', 4.8),
+          dep(10, 15), 510, route87.startPoint, route87.endPoint, 5, 6, 10, 2, 'moderate', 2200, 'A. Tharmalingam', 4.8),
       _trip(route87, 'BUS_NB_8720', 'NB-8720 (Northern Highway Flyer)', 'Semi Luxury',
-          dep(13, 0), 480, route87.startPoint, route87.endPoint, 11, 22, 15, 'low', 2400, 'T. Pathmanathan', 4.9),
+          dep(13, 0), 480, route87.startPoint, route87.endPoint, 12, 14, 26, 6, 'low', 2400, 'T. Pathmanathan', 4.9),
       _trip(route87, 'BUS_NB_8725', 'NB-8725 (Vanni Inter-Provincial)', 'Normal',
-          dep(16, 30), 480, route87.startPoint, route87.endPoint, 7, 16, 10, 'moderate', 2400, 'S. Shanmugam', 4.8),
+          dep(16, 30), 480, route87.startPoint, route87.endPoint, 6, 7, 12, 2, 'moderate', 2400, 'S. Shanmugam', 4.8),
       _trip(route87, 'BUS_NB_8730', 'NB-8730 (Night Mail Express)', 'Semi Luxury Sleeper',
-          dep(20, 0), 480, route87.startPoint, route87.endPoint, 10, 20, 14, 'low', 2600, 'N. Gnanavel', 4.9),
+          dep(20, 0), 480, route87.startPoint, route87.endPoint, 10, 12, 22, 5, 'low', 2600, 'N. Gnanavel', 4.9),
       _trip(route87, 'BUS_NB_8735', 'NB-8735 (SafeBoard Night Shield)', 'Semi Luxury',
-          dep(21, 30), 480, route87.startPoint, route87.endPoint, 8, 15, 8, 'moderate', 2600, 'V. Ratnam', 4.9),
+          dep(21, 30), 480, route87.startPoint, route87.endPoint, 6, 8, 13, 3, 'moderate', 2600, 'V. Ratnam', 4.9),
       _trip(route87, 'BUS_NB_8740', 'NB-8740 (Midnight Highway Cruiser)', 'Normal',
-          dep(23, 0), 480, route87.startPoint, route87.endPoint, 9, 21, 15, 'low', 2600, 'D. Senanayake', 4.8),
+          dep(23, 0), 480, route87.startPoint, route87.endPoint, 9, 12, 21, 4, 'low', 2600, 'D. Senanayake', 4.8),
     ];
 
     final reverse = <BusSchedule>[
       _trip(route87, 'BUS_JN_8702', 'JN-8702 (Jaffna Sunrise Express)', 'Semi Luxury',
-          dep(5, 0), 480, route87.endPoint, route87.startPoint, 10, 22, 15, 'low', 2400, 'P. Kumaraswamy', 4.9),
+          dep(5, 0), 480, route87.endPoint, route87.startPoint, 11, 12, 23, 5, 'low', 2400, 'P. Kumaraswamy', 4.9),
       _trip(route87, 'BUS_JN_8706', 'JN-8706 (Southbound Highway Cruiser)', 'Normal',
-          dep(6, 45), 480, route87.endPoint, route87.startPoint, 9, 20, 13, 'low', 2400, 'S. Rajendran', 4.9),
+          dep(6, 45), 480, route87.endPoint, route87.startPoint, 10, 11, 21, 4, 'low', 2400, 'S. Rajendran', 4.9),
       _trip(route87, 'BUS_JN_8711', 'JN-8711 (SafeBoard Shield Return)', 'Semi Luxury',
-          dep(8, 15), 480, route87.endPoint, route87.startPoint, 8, 19, 12, 'moderate', 2400, 'L. Wickramasinghe', 4.9),
+          dep(8, 15), 480, route87.endPoint, route87.startPoint, 6, 8, 14, 3, 'moderate', 2400, 'L. Wickramasinghe', 4.9),
       _trip(route87, 'BUS_JN_8716', 'JN-8716 (Yal Devi Semi-Express Return)', 'Normal',
-          dep(10, 30), 510, route87.endPoint, route87.startPoint, 6, 15, 9, 'moderate', 2200, 'C. Ganeshamoorthy', 4.8),
+          dep(10, 30), 510, route87.endPoint, route87.startPoint, 5, 6, 11, 2, 'moderate', 2200, 'C. Ganeshamoorthy', 4.8),
       _trip(route87, 'BUS_JN_8721', 'JN-8721 (Vanni Southbound)', 'Semi Luxury',
-          dep(13, 30), 480, route87.endPoint, route87.startPoint, 11, 23, 16, 'low', 2400, 'R. Balasingham', 4.9),
+          dep(13, 30), 480, route87.endPoint, route87.startPoint, 12, 14, 25, 6, 'low', 2400, 'R. Balasingham', 4.9),
       _trip(route87, 'BUS_JN_8726', 'JN-8726 (Colombo Highway Flyer)', 'Normal',
-          dep(16, 0), 480, route87.endPoint, route87.startPoint, 7, 17, 11, 'moderate', 2400, 'H. Jayasuriya', 4.8),
+          dep(16, 0), 480, route87.endPoint, route87.startPoint, 6, 7, 12, 2, 'moderate', 2400, 'H. Jayasuriya', 4.8),
       _trip(route87, 'BUS_JN_8731', 'JN-8731 (Night Mail Southbound)', 'Semi Luxury Sleeper',
-          dep(19, 30), 480, route87.endPoint, route87.startPoint, 10, 19, 13, 'low', 2600, 'T. Nadarajah', 4.9),
+          dep(19, 30), 480, route87.endPoint, route87.startPoint, 10, 11, 20, 4, 'low', 2600, 'T. Nadarajah', 4.9),
       _trip(route87, 'BUS_JN_8736', 'JN-8736 (SafeBoard Night Shield Return)', 'Semi Luxury',
-          dep(21, 0), 480, route87.endPoint, route87.startPoint, 8, 16, 9, 'moderate', 2600, 'A. Perera', 4.9),
+          dep(21, 0), 480, route87.endPoint, route87.startPoint, 7, 8, 13, 3, 'moderate', 2600, 'A. Perera', 4.9),
       _trip(route87, 'BUS_JN_8741', 'JN-8741 (Midnight Colombo Cruiser)', 'Normal',
-          dep(22, 45), 480, route87.endPoint, route87.startPoint, 9, 20, 14, 'low', 2600, 'M. Wijesekara', 4.8),
+          dep(22, 45), 480, route87.endPoint, route87.startPoint, 9, 13, 22, 5, 'low', 2600, 'M. Wijesekara', 4.8),
     ];
 
     return [...forward, ...reverse];
@@ -430,6 +435,7 @@ class BookingProvider with ChangeNotifier {
     String endPoint,
     int availablePrioritySeats,
     int availableGeneralSeats,
+    int availableLimitedSeats,
     int availableStanding,
     String crowdingLevel,
     double fareLkr,
@@ -449,6 +455,7 @@ class BookingProvider with ChangeNotifier {
       stops: route.stops,
       availablePrioritySeats: availablePrioritySeats,
       availableGeneralSeats: availableGeneralSeats,
+      availableLimitedSeats: availableLimitedSeats,
       availableStanding: availableStanding,
       crowdingLevel: crowdingLevel,
       fareLkr: fareLkr,
@@ -563,7 +570,7 @@ class BookingProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final allocation = await _allocateSeat(passenger, alternateAttempt: 0);
+      final allocation = await _allocateSeat(passenger);
       _lastAllocation = allocation;
       _allocationHistory
         ..clear()
@@ -577,12 +584,11 @@ class BookingProvider with ChangeNotifier {
     }
   }
 
-  // Books one seat for the signed-in passenger plus one for each companion,
-  // running the allocation engine separately for every person (each with
-  // their own gender/mobility/safety-preference) so a mixed group lands in
-  // the right zone individually, rather than N copies of one result. Only
-  // called when seatCount > 1 - the single-seat path (requestAllocation)
-  // is untouched.
+  // Books one seat for the signed-in passenger plus one for each companion
+  // in a single pass against the shared seat map, so the group is tried
+  // together (adjacent seats in one zone) before falling back to seating
+  // everyone individually. Only called when seatCount > 1 - the single-seat
+  // path (requestAllocation) is untouched.
   Future<List<SeatAllocation>> requestGroupAllocation(Passenger primary) async {
     _isAllocating = true;
     notifyListeners();
@@ -600,15 +606,29 @@ class BookingProvider with ChangeNotifier {
           mobilityStatus: c.mobilityStatus,
           phoneNumber: primary.phoneNumber,
           safetyPreference: c.safetyPreference,
+          pregnant: c.pregnant,
           createdDate: DateTime.now(),
           updatedDate: DateTime.now(),
         ));
       }
 
-      final results = <SeatAllocation>[];
-      for (var i = 0; i < passengers.length; i++) {
-        results.add(await _allocateSeat(passengers[i], alternateAttempt: i));
-      }
+      final route = _selectedRoute ?? sampleRoutes.first;
+      final bus = _selectedBus;
+      final bStop = _boardingStop ?? _searchBoardingStop ?? route.stops.first;
+      final aStop = _alightingStop ?? _searchAlightingStop ?? route.stops.last;
+
+      final results = await _allocationService.allocateGroup(
+        passengers: passengers,
+        journeyId: 'JRN_87_001',
+        routeId: route.routeId,
+        busId: _busId,
+        boardingStop: bStop,
+        alightingStop: aStop,
+        availablePrioritySeats: bus?.availablePrioritySeats,
+        availableGeneralSeats: bus?.availableGeneralSeats,
+        availableLimitedSeats: bus?.availableLimitedSeats,
+        availableStanding: bus?.availableStanding,
+      );
 
       _groupAllocations = results;
       _lastAllocation = results.first;
@@ -626,7 +646,9 @@ class BookingProvider with ChangeNotifier {
 
   // Suggests a different seat than the current one (same eligible zone),
   // up to [maxSeatChanges] times. Returns the existing allocation unchanged
-  // once that limit is reached.
+  // once that limit is reached. Every seat suggested so far this booking is
+  // freed back to the pool and excluded from being offered again, so
+  // browsing alternatives never leaks seats out of circulation.
   Future<SeatAllocation> requestAlternateSeat(Passenger passenger) async {
     if (!canRequestAnotherSeat) return _lastAllocation ?? await requestAllocation(passenger);
 
@@ -634,8 +656,12 @@ class BookingProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final attempt = _seatChangeCount + 1;
-      final allocation = await _allocateSeat(passenger, alternateAttempt: attempt);
+      final previouslySuggested = _allocationHistory.map((a) => a.seatNumber).toSet();
+      for (final seatNumber in previouslySuggested) {
+        _allocationService.releaseSeat(busId: _busId, seatNumber: seatNumber);
+      }
+
+      final allocation = await _allocateSeat(passenger, excludeSeats: previouslySuggested);
       _seatChangeCount++;
       _allocationHistory.add(allocation);
       _allocationHistoryIndex = _allocationHistory.length - 1;
@@ -665,28 +691,26 @@ class BookingProvider with ChangeNotifier {
     return _lastAllocation;
   }
 
-  Future<SeatAllocation> _allocateSeat(Passenger passenger, {required int alternateAttempt}) {
+  String get _busId => _selectedBus?.busId ?? 'BUS_NB_8710';
+
+  Future<SeatAllocation> _allocateSeat(Passenger passenger, {Set<String> excludeSeats = const {}}) {
     final route = _selectedRoute ?? sampleRoutes.first;
     final bus = _selectedBus;
     final bStop = _boardingStop ?? _searchBoardingStop ?? route.stops.first;
     final aStop = _alightingStop ?? _searchAlightingStop ?? route.stops.last;
-    final busId = bus?.busId ?? 'BUS_NB_8710';
-
-    final boardingKm = route.distanceToStopKm(bStop);
-    final alightingKm = route.distanceToStopKm(aStop);
-    final tripDistanceKm =
-        (boardingKm != null && alightingKm != null) ? (alightingKm - boardingKm).abs() : null;
 
     return _allocationService.allocateSeat(
       passenger: passenger,
       journeyId: 'JRN_87_001',
       routeId: route.routeId,
-      busId: busId,
+      busId: _busId,
       boardingStop: bStop,
       alightingStop: aStop,
-      tripDistanceKm: tripDistanceKm,
+      availablePrioritySeats: bus?.availablePrioritySeats,
       availableGeneralSeats: bus?.availableGeneralSeats,
-      alternateAttempt: alternateAttempt,
+      availableLimitedSeats: bus?.availableLimitedSeats,
+      availableStanding: bus?.availableStanding,
+      excludeSeats: excludeSeats,
     );
   }
 }

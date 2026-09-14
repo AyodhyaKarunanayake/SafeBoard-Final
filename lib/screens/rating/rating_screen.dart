@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/tickets_provider.dart';
 import '../../constants/colors.dart';
+import '../../utils/seat_zone.dart';
 import '../../widgets/zone_pill.dart';
 import '../../widgets/gradient_button.dart';
 
@@ -63,13 +64,7 @@ class _RatingScreenState extends State<RatingScreen> {
 
     final routeLabel = ticket != null ? '${ticket.route.routeName} Complete' : 'Journey Complete';
     final journeyLabel = ticket != null ? '${ticket.allocation.boardingStop} → ${ticket.allocation.alightingStop}' : '';
-    final zoneKey = ticket == null
-        ? 'general'
-        : ticket.allocation.seatNumber.toUpperCase().startsWith('STANDING')
-            ? 'standing'
-            : (int.tryParse(RegExp(r'^(\d+)').firstMatch(ticket.allocation.seatNumber)?.group(1) ?? '') ?? 99) <= 3
-                ? 'priority'
-                : 'general';
+    final zoneKey = ticket == null ? 'general' : zoneForSeatNumber(ticket.allocation.seatNumber).zoneKey;
 
     void finish() {
       if (ticket != null) {

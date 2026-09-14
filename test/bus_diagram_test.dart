@@ -5,7 +5,9 @@ import 'package:safeboard/widgets/bus_diagram.dart';
 import 'package:safeboard/widgets/zone_pill.dart';
 
 void main() {
-  testWidgets('BusDiagram staggers the right column behind the left, fits the rear bench to the same margins, renders 6 uniform standing spots, and highlights allocated seat 3A', (WidgetTester tester) async {
+  testWidgets(
+      'BusDiagram renders 11 uniform 5-seat rows, a 6-seat rear bench, 6 standing spots down the aisle, and highlights allocated seat 3A',
+      (WidgetTester tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -16,39 +18,50 @@ void main() {
       ),
     );
 
-    // 3-zone legend
+    // 4-zone legend: Priority, General, Limited and Standing are now
+    // visually distinct (Limited is a real seat, Standing is not).
     expect(find.text('PRIORITY'), findsOneWidget);
     expect(find.text('GENERAL'), findsOneWidget);
-    expect(find.text('LIMITED STANDING'), findsOneWidget);
+    expect(find.text('LIMITED'), findsOneWidget);
+    expect(find.text('STANDING'), findsOneWidget);
 
     // Every seat uses the same seat-icon visual language.
     expect(find.byIcon(Icons.event_seat), findsWidgets);
 
-    // Allocated seat 3A is rendered and highlighted with a checkmark badge
+    // Allocated seat 3A is rendered and highlighted with a checkmark badge.
     expect(find.text('3A'), findsOneWidget);
     expect(find.byIcon(Icons.check), findsOneWidget);
 
-    // Left column: rows 1-10 only (then the rear door - no row 11 on the left)
-    for (final seat in ['1A', '10B']) {
-      expect(find.text(seat), findsOneWidget);
+    // Rows 1-11 are uniform: every row has the full A,B,C,D,E set, no
+    // staggering or row-count mismatch between the left and right blocks.
+    for (final row in [1, 6, 11]) {
+      for (final letter in ['A', 'B', 'C', 'D', 'E']) {
+        expect(find.text('$row$letter'), findsOneWidget, reason: 'seat $row$letter should be on the diagram');
+      }
     }
-    expect(find.text('11A'), findsNothing);
+    // No row 14 (only rows 1-13 exist).
+    expect(find.text('14A'), findsNothing);
 
-    // Right column: rows 1-11 (the extra row, staggered in behind the left)
-    for (final seat in ['1C', '10E', '11C', '11D', '11E']) {
-      expect(find.text(seat), findsOneWidget);
+    // Row 12 is right-only (beside the rear door, no left pair) - fills
+    // the space the rear door leaves empty on the right column.
+    for (final letter in ['C', 'D', 'E']) {
+      expect(find.text('12$letter'), findsOneWidget, reason: 'seat 12$letter should be on the diagram, beside the rear door');
     }
+    expect(find.text('12A'), findsNothing, reason: 'row 12 has no left pair - the rear door occupies that space');
+    expect(find.text('12B'), findsNothing);
 
-    // Rear bench (row 12) renders exactly 6 seats
+    // Rear bench (row 13) renders exactly 6 seats, no left/right split.
     for (final letter in ['A', 'B', 'C', 'D', 'E', 'F']) {
-      expect(find.text('12$letter'), findsOneWidget);
+      expect(find.text('13$letter'), findsOneWidget);
     }
     // The bench must fit within the same width and left margin as the seat
     // rows above it, not stretch wider than the rest of the bus.
     final bodyRect = tester.getRect(find.byKey(const Key('busSeatBody')));
     final benchRect = tester.getRect(find.byKey(const Key('rearBench')));
-    expect((bodyRect.left - benchRect.left).abs() < 0.5, isTrue, reason: 'Bench should start at the same left margin as the seat rows above it');
-    expect((bodyRect.width - benchRect.width).abs() < 0.5, isTrue, reason: 'Bench should not be wider than the seat rows above it');
+    expect((bodyRect.left - benchRect.left).abs() < 0.5, isTrue,
+        reason: 'Bench should start at the same left margin as the seat rows above it');
+    expect((bodyRect.width - benchRect.width).abs() < 0.5, isTrue,
+        reason: 'Bench should not be wider than the seat rows above it');
 
     // Driver is rendered as a seat with a neutral color, not the navy used
     // for the allocated-seat highlight.
@@ -63,11 +76,26 @@ void main() {
     expect(find.text('Front Door'), findsOneWidget);
     expect(find.text('Rear Door'), findsOneWidget);
 
-    // Exactly 6 standing spots, all styled the same way (no side variant).
+    // Exactly 6 standing spots, all styled the same way (no side variant),
+    // rendered as their own strip separate from the seat rows.
     expect(find.byIcon(Icons.accessibility_new), findsNWidgets(6));
   });
 
-  testWidgets('BusDiagram highlights the passenger\'s own standing spot when allocated standing, capped at 6', (WidgetTester tester) async {
+  testWidgets('BusDiagram highlights every seat in a multi-seat (group) allocation, not just the primary one', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: BusDiagram(allocatedSeat: '1A', extraAllocatedSeats: ['1B', '13F']),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.check), findsNWidgets(3));
+  });
+
+  testWidgets("BusDiagram highlights the passenger's own standing spot when allocated standing, capped at 6", (WidgetTester tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -113,5 +141,17 @@ void main() {
     );
 
     expect(find.text('Priority Zone'), findsOneWidget);
+  });
+
+  testWidgets('ZonePill renders the Limited Zone label', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ZonePill(zone: 'limited', small: true),
+        ),
+      ),
+    );
+
+    expect(find.text('Limited Zone'), findsOneWidget);
   });
 }

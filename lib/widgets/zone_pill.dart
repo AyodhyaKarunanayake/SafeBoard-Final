@@ -15,6 +15,7 @@ class ZonePill extends StatelessWidget {
     final z = zone.toLowerCase();
     if (z.startsWith('p')) return 'Priority Zone';
     if (z.startsWith('g')) return 'General Zone';
+    if (z.startsWith('l')) return 'Limited Zone';
     if (z.startsWith('s')) return 'Standing Area';
     return 'General Zone';
   }

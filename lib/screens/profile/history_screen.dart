@@ -5,17 +5,13 @@ import '../../providers/tickets_provider.dart';
 import '../../providers/booking_provider.dart';
 import '../../models/ticket.dart';
 import '../../constants/colors.dart';
+import '../../utils/seat_zone.dart';
 import '../../widgets/zone_pill.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 
-// Seat -> gender-aware zone key, same row rule used everywhere else
-// (rows 1-3 priority, row 12 the rear bench, everything else general).
-String _zoneForSeat(String seatNumber) {
-  if (seatNumber.toUpperCase().startsWith('STANDING')) return 'standing';
-  final rowNum = int.tryParse(RegExp(r'^(\d+)').firstMatch(seatNumber)?.group(1) ?? '');
-  if (rowNum != null && rowNum <= 3) return 'priority';
-  return 'general';
-}
+// Seat -> zone key, same row rule used everywhere else - see
+// lib/utils/seat_zone.dart.
+String _zoneForSeat(String seatNumber) => zoneForSeatNumber(seatNumber).zoneKey;
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});

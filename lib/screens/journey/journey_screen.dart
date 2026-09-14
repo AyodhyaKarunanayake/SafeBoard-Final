@@ -13,6 +13,7 @@ import '../../models/bus_schedule.dart';
 import '../../models/route_model.dart';
 import '../../models/seat_allocation.dart';
 import '../../constants/colors.dart';
+import '../../utils/seat_zone.dart';
 import '../../widgets/zone_pill.dart';
 import '../../widgets/sos_button.dart';
 import '../../widgets/bus_diagram.dart';
@@ -20,22 +21,28 @@ import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/qr_code_widget.dart';
 import '../../widgets/tonal_button.dart';
 
-// Seat -> gender-aware zone, mirroring the same row rule used at allocation
-// time (rows 1-3 priority, row 12 the rear bench, everything else general;
-// see allocation_result_screen.dart's _sideDescription/zoneKey logic).
+// Seat -> zone label, mirroring the same row rule used at allocation time
+// (rows 1-3 priority, 4-6 general, 7-12 limited; see lib/utils/seat_zone.dart).
 class _SeatZone {
-  final String key; // 'priority' | 'general' | 'standing'
+  final String key; // 'priority' | 'general' | 'limited' | 'standing'
   final String label;
   const _SeatZone(this.key, this.label);
 
   static _SeatZone forSeat(String seatNumber) {
-    if (seatNumber.toUpperCase().startsWith('STANDING')) {
-      return const _SeatZone('standing', 'Standing · Limited Zone');
+    final zone = zoneForSeatNumber(seatNumber);
+    switch (zone.zoneKey) {
+      case 'standing':
+        return const _SeatZone('standing', 'Standing · Rear Aisle');
+      case 'priority':
+        return _SeatZone('priority', 'Priority Zone · Row ${zone.rowNumber}');
+      case 'limited':
+        return _SeatZone(
+          'limited',
+          zone.rowNumber == 13 ? 'Limited Zone · Rear Bench (Row 13)' : 'Limited Zone · Row ${zone.rowNumber}',
+        );
+      default:
+        return _SeatZone('general', 'General Zone · Row ${zone.rowNumber ?? '-'}');
     }
-    final rowNum = int.tryParse(RegExp(r'^(\d+)').firstMatch(seatNumber)?.group(1) ?? '');
-    if (rowNum != null && rowNum <= 3) return _SeatZone('priority', 'Priority Zone · Row $rowNum');
-    if (rowNum == 12) return const _SeatZone('general', 'Rear Bench · Row 12');
-    return _SeatZone('general', 'General Zone · Row ${rowNum ?? '-'}');
   }
 }
 
@@ -362,7 +369,7 @@ class _JourneyScreenState extends State<JourneyScreen> with SingleTickerProvider
     final remainingText = alightTime != null ? BusSchedule.formatDuration(alightTime.difference(now).inMinutes.clamp(0, 100000)) : '--';
     final tripFraction = hi > lo ? ((progress.fullIndex - lo) / (hi - lo)).clamp(0.0, 1.0) : 1.0;
 
-    final occupancyFraction = (journeyProvider.currentOccupancy / 42.0).clamp(0.0, 1.0);
+    final occupancyFraction = (journeyProvider.currentOccupancy / 64.0).clamp(0.0, 1.0);
     final Color occupancyColor = occupancyFraction >= 0.9
         ? AppColors.emergencyRed
         : occupancyFraction >= 0.75
@@ -375,15 +382,19 @@ class _JourneyScreenState extends State<JourneyScreen> with SingleTickerProvider
     switch (zone.key) {
       case 'priority':
         nearbyCount = journeyProvider.priorityOccupied;
-        nearbyCapacity = 12;
+        nearbyCapacity = 15;
+        break;
+      case 'limited':
+        nearbyCount = journeyProvider.limitedOccupied;
+        nearbyCapacity = 34;
         break;
       case 'standing':
         nearbyCount = journeyProvider.standingCount;
-        nearbyCapacity = 18;
+        nearbyCapacity = 6;
         break;
       default:
         nearbyCount = journeyProvider.generalOccupied;
-        nearbyCapacity = 30;
+        nearbyCapacity = 15;
     }
 
     return Scaffold(

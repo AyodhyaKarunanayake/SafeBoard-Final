@@ -690,34 +690,52 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 const SizedBox(height: 14),
 
-                // Seat Availability Mini Bars
-                Row(
+                // Seat Availability Mini Bars - a 2x2 grid (4 zones no
+                // longer fit comfortably in one row).
+                Column(
                   children: [
-                    Expanded(
-                      child: _buildSeatAvailabilityItem(
-                        label: 'Priority Zone',
-                        avail: bus.availablePrioritySeats,
-                        total: bus.totalPrioritySeats,
-                        color: AppColors.priorityAccent,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildSeatAvailabilityItem(
+                            label: 'Priority Zone',
+                            avail: bus.availablePrioritySeats,
+                            total: bus.totalPrioritySeats,
+                            color: AppColors.priorityAccent,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildSeatAvailabilityItem(
+                            label: 'General Zone',
+                            avail: bus.availableGeneralSeats,
+                            total: bus.totalGeneralSeats,
+                            color: AppColors.generalAccent,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildSeatAvailabilityItem(
-                        label: 'General Zone',
-                        avail: bus.availableGeneralSeats,
-                        total: bus.totalGeneralSeats,
-                        color: AppColors.generalAccent,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildSeatAvailabilityItem(
-                        label: 'Standing',
-                        avail: bus.availableStanding,
-                        total: bus.totalStanding,
-                        color: AppColors.standingAccent,
-                      ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildSeatAvailabilityItem(
+                            label: 'Limited Zone',
+                            avail: bus.availableLimitedSeats,
+                            total: bus.totalLimitedSeats,
+                            color: AppColors.limitedAccent,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildSeatAvailabilityItem(
+                            label: 'Standing',
+                            avail: bus.availableStanding,
+                            total: bus.totalStanding,
+                            color: AppColors.standingAccent,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
