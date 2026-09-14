@@ -201,6 +201,10 @@ class AllocationResultScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             _buildSeatChangeControls(context, bookingProvider, journeyProvider),
+            if (alloc?.priorityReserved == true) ...[
+              const SizedBox(height: 12),
+              _buildPriorityReservedNote(),
+            ],
             const SizedBox(height: 20),
 
             // Boarding & Alighting Stop Chips Side by Side
@@ -470,6 +474,14 @@ class AllocationResultScreen extends StatelessWidget {
                 ],
               ),
             ),
+            if (group.any((a) => a.priorityReserved)) ...[
+              const SizedBox(height: 12),
+              _buildPriorityReservedNote(),
+            ],
+            if (bookingProvider.travelingTogether) ...[
+              const SizedBox(height: 12),
+              _buildTravelingTogetherNote(),
+            ],
             const SizedBox(height: 20),
 
             const Text('Your Seats', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primaryNavy)),
@@ -589,6 +601,59 @@ class AllocationResultScreen extends StatelessWidget {
       widgets.add(_buildWhyRow(icon, color, title, subtitle));
     }
     return widgets;
+  }
+
+  // Shown when a safetyPreference-only passenger was bumped out of a
+  // nearly-full Priority zone so the last couple of seats stay held back
+  // for passengers with a real mobility need or who are pregnant.
+  Widget _buildPriorityReservedNote() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.priorityBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.priorityAccent.withOpacity(0.3)),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, size: 16, color: AppColors.priorityText),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Priority seats are currently reserved for passengers with mobility needs.',
+              style: TextStyle(fontSize: 11, color: AppColors.priorityText, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Optional confirmation that the group's "comfortable sitting together
+  // regardless of gender" opt-in was in effect for this booking.
+  Widget _buildTravelingTogetherNote() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.generalBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.generalAccent.withOpacity(0.3)),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.groups_2_outlined, size: 16, color: AppColors.generalText),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Seated together across genders, as your group requested.',
+              style: TextStyle(fontSize: 11, color: AppColors.generalText, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildWhyRow(IconData icon, Color color, String title, String subtitle) {

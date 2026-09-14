@@ -112,19 +112,31 @@ function orderForSelection(passengers) {
  *      pregnant makes a passenger Priority-eligible. Among competing
  *      eligible passengers for the same seat, female passengers are
  *      weighted higher (see orderForSelection).
- *   2. Eligible -> try PRIORITY (nearest free seat to the front door).
- *   3. Not eligible, or PRIORITY full -> try GENERAL (opposite-gender /
- *      row-distance cost-scored).
- *   4. GENERAL full -> try LIMITED (same cost-scoring).
+ *   2. Eligible -> try PRIORITY (nearest free seat to the front door) -
+ *      UNLESS only 2 or fewer free priority seats remain, in which case
+ *      those are reserved for passengers with a real mobility need or who
+ *      are pregnant; a safety_preference-only passenger is bumped to
+ *      General instead (flagged `priority_reserved: true`).
+ *   3. Not eligible, or PRIORITY full/reserved -> try GENERAL: a two-stage
+ *      pick - Stage A hard-filters out any seat with an opposite-gender
+ *      neighbour, Stage B picks the lowest-row survivor (falling back to
+ *      the lowest-row seat overall if every free seat has an
+ *      opposite-gender neighbour).
+ *   4. GENERAL full -> try LIMITED (same two-stage pick).
  *   5. PRIORITY, GENERAL and LIMITED all full -> STANDING, capped at 6.
  *   6. STANDING also full -> reject with "bus at capacity".
  *
  * `seat_count` (default 1) requests a group: adjacent seats are tried
  * first in a single zone (PRIORITY only if the whole group is eligible,
- * else starting at GENERAL, following the same zone fallback order); if no
- * zone has a large-enough contiguous block, the group falls back to being
- * allocated individually through steps 1-5 above, rather than failing the
- * whole request.
+ * else starting at GENERAL, following the same zone fallback order), using
+ * the same hard-filter-then-tiebreak approach across candidate blocks. If
+ * every passenger in the group has opted in with `traveling_together:
+ * true`, the hard filter is skipped between the group's OWN members (they
+ * may sit adjacent regardless of gender) while still applying normally
+ * against every other passenger on the bus. If no zone has a
+ * large-enough gender-safe (or, failing that, simply free) contiguous
+ * block, the group falls back to being allocated individually through
+ * steps 1-5 above, rather than failing the whole request.
  */
 exports.allocateSeat = functions.https.onRequest(async (req, res) => {
   if (req.method !== "POST") {
@@ -150,6 +162,7 @@ exports.allocateSeat = functions.https.onRequest(async (req, res) => {
       mobility_status: req.body.mobility_status,
       safety_preference: req.body.safety_preference,
       pregnant: req.body.pregnant,
+      traveling_together: req.body.traveling_together,
     }];
   const requestedCount = Math.max(1, seat_count || passengers.length);
 
@@ -196,6 +209,10 @@ exports.allocateSeat = functions.https.onRequest(async (req, res) => {
       return !(seat in occupiedGenderBySeat);
     }
 
+    // Kept for other cosmetic risk-score computations (e.g. the group
+    // adjacent-block path) - no longer used to DECIDE which seat
+    // pickBestScoredSeat returns; see the hard-filter-then-tiebreak logic
+    // below instead.
     function costFor(seat, gender) {
       let cost = rowOfSeat(seat) * 0.02;
       for (const neighbor of neighborsOf(seat)) {
@@ -205,57 +222,142 @@ exports.allocateSeat = functions.https.onRequest(async (req, res) => {
       return cost;
     }
 
+    // True if none of [seat]'s physical neighbours are currently occupied
+    // by someone of a different gender than [gender]. This is the Stage A
+    // hard filter used by pickBestScoredSeat and (in a group-aware form)
+    // by findAdjacentBlock.
+    function isGenderSafeSeat(seat, gender) {
+      for (const neighbor of neighborsOf(seat)) {
+        const occupant = occupiedGenderBySeat[neighbor];
+        if (occupant && occupant !== gender) return false;
+      }
+      return true;
+    }
+
+    function compareByRowThenLetter(a, b) {
+      return rowOfSeat(a) - rowOfSeat(b) || a.localeCompare(b);
+    }
+
     function pickNearestPrioritySeat(exclude) {
       const free = allSeatsInZone("priority").filter((s) => isFree(s) && !exclude.has(s));
       if (free.length === 0) return null;
-      free.sort((a, b) => rowOfSeat(a) - rowOfSeat(b) || a.localeCompare(b));
+      free.sort(compareByRowThenLetter);
       return free[0];
     }
 
+    // Two-stage selection, used for both General and Limited zones:
+    //   Stage A (hard filter) - keep only free seats with no opposite-
+    //   gender neighbour.
+    //   Stage B (soft tiebreak) - pick the lowest-row seat among survivors
+    //   (alphabetical tiebreak); if nothing survives the hard filter
+    //   (every free seat has an opposite-gender neighbour), fall back to
+    //   the same tiebreak across every free seat in the zone, ignoring
+    //   gender.
     function pickBestScoredSeat(zone, gender, exclude) {
       const free = allSeatsInZone(zone).filter((s) => isFree(s) && !exclude.has(s));
       if (free.length === 0) return null;
-      free.sort((a, b) => costFor(a, gender) - costFor(b, gender) || a.localeCompare(b));
-      return free[0];
+
+      const genderSafe = free.filter((s) => isGenderSafeSeat(s, gender));
+      const candidates = genderSafe.length > 0 ? genderSafe : free;
+      candidates.sort(compareByRowThenLetter);
+      return candidates[0];
     }
 
-    function findAdjacentBlock(zone, count) {
+    // Gender-safety check for a candidate group window: for each seat in
+    // the window (assigned to the passenger at the same index in
+    // [genders]), every neighbour must either be a fellow group member
+    // (exempted when [travelingTogether]) or - for neighbours outside the
+    // window, i.e. real, possibly-already-occupied seats belonging to
+    // someone else on the bus - not of a different gender. The hard filter
+    // always applies to outside neighbours, traveling_together or not.
+    function windowIsGenderSafe(window, genders, travelingTogether) {
+      for (let i = 0; i < window.length; i++) {
+        const seat = window[i];
+        const passengerGender = genders[i];
+        for (const neighbor of neighborsOf(seat)) {
+          const neighborIndexInWindow = window.indexOf(neighbor);
+          if (neighborIndexInWindow !== -1) {
+            if (travelingTogether) continue; // fellow group member - mutually exempted
+            if (genders[neighborIndexInWindow] !== passengerGender) return false;
+          } else {
+            const occupant = occupiedGenderBySeat[neighbor];
+            if (occupant && occupant !== passengerGender) return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    // Searches each row's contiguous blocks, in zone row order, for
+    // genders.length free seats sitting next to each other - the "book a
+    // group together" case.
+    //   Stage A (hard filter) - among windows that fit and are entirely
+    //   free, prefer one where every seat is gender-safe (see
+    //   windowIsGenderSafe); opposite-gender members of THIS SAME group
+    //   are exempted from each other when [travelingTogether].
+    //   Stage B (soft tiebreak) - the first (lowest-row) gender-safe
+    //   window wins; if none exists anywhere in the zone, fall back to the
+    //   first free window regardless of gender, so the group still gets
+    //   seated together.
+    function findAdjacentBlock(zone, genders, travelingTogether) {
+      const count = genders.length;
       const rows = zone === "priority" ? PRIORITY_ROWS : zone === "general" ? GENERAL_ROWS : [...LIMITED_ROWS, REAR_BENCH_ROW];
+
+      let fallbackWindow = null;
       for (const row of rows) {
         for (const block of rowBlocks(row)) {
           if (block.length < count) continue;
           for (let start = 0; start + count <= block.length; start++) {
             const window = block.slice(start, start + count);
-            if (window.every((s) => isFree(s))) return window;
+            if (!window.every((s) => isFree(s))) continue;
+
+            if (!fallbackWindow) fallbackWindow = window;
+            if (windowIsGenderSafe(window, genders, travelingTogether)) return window;
           }
         }
       }
-      return null;
+      return fallbackWindow;
     }
+
+    // 2 or fewer free priority seats left -> reserved for passengers with
+    // a real mobility need or who are pregnant; a passenger who is only
+    // priority-eligible via safety_preference is bumped to General instead
+    // (flagged via priority_reserved) rather than taking one of the last
+    // priority seats from someone who needs it more.
+    const PRIORITY_RESERVE_THRESHOLD = 2;
 
     // The core per-passenger algorithm (steps 1-5). Mutates the in-memory
     // occupancy state as it goes, so a group's individual fallback never
     // double-books a seat.
     function allocateOne(passenger, exclude) {
+      let priorityReserved = false;
       if (isPriorityEligible(passenger)) {
-        const seat = pickNearestPrioritySeat(exclude);
-        if (seat) return { seatNumber: seat, zone: "priority", riskScore: 0.05 };
+        const freeCount = allSeatsInZone("priority").filter((s) => isFree(s) && !exclude.has(s)).length;
+        const hasStrongPriorityNeed = (passenger.mobility_status && passenger.mobility_status !== "none") || passenger.pregnant === true;
+        if (freeCount <= PRIORITY_RESERVE_THRESHOLD && !hasStrongPriorityNeed) {
+          priorityReserved = true; // safety_preference-only - falls through, flagged for the UI
+        } else {
+          const seat = pickNearestPrioritySeat(exclude);
+          if (seat) return { seatNumber: seat, zone: "priority", riskScore: 0.05, priorityReserved: false };
+        }
       }
 
       const generalSeat = pickBestScoredSeat("general", passenger.gender, exclude);
       if (generalSeat) {
-        return { seatNumber: generalSeat, zone: "general", riskScore: 0.1 + costFor(generalSeat, passenger.gender) };
+        const risk = 0.1 + (isGenderSafeSeat(generalSeat, passenger.gender) ? 0.0 : 0.15);
+        return { seatNumber: generalSeat, zone: "general", riskScore: risk, priorityReserved };
       }
 
       const limitedSeat = pickBestScoredSeat("limited", passenger.gender, exclude);
       if (limitedSeat) {
-        return { seatNumber: limitedSeat, zone: "limited", riskScore: 0.2 + costFor(limitedSeat, passenger.gender) };
+        const risk = 0.2 + (isGenderSafeSeat(limitedSeat, passenger.gender) ? 0.0 : 0.15);
+        return { seatNumber: limitedSeat, zone: "limited", riskScore: risk, priorityReserved };
       }
 
       if (standingOccupied < STANDING_CAPACITY) {
         const slot = standingOccupied + 1;
         const ratio = standingOccupied / STANDING_CAPACITY;
-        return { seatNumber: `Standing-${slot}`, zone: "standing", riskScore: 0.5 + ratio * 0.3 };
+        return { seatNumber: `Standing-${slot}`, zone: "standing", riskScore: 0.5 + ratio * 0.3, priorityReserved };
       }
 
       return null; // bus at capacity
@@ -272,12 +374,19 @@ exports.allocateSeat = functions.https.onRequest(async (req, res) => {
     // ── Run the group (or single-passenger) allocation ──────────────────
     const allEligible = passengers.every(isPriorityEligible);
     const zoneOrder = allEligible ? ["priority", "general", "limited"] : ["general", "limited"];
+    const travelingTogetherAll = passengers.every((p) => p.traveling_together === true);
+
+    // Seat-assignment order is decided up front (gender-weighted, primary
+    // first) so the adjacency search can check each candidate window
+    // against the actual genders that would end up sitting in it.
+    const ordered = orderForSelection(passengers);
+    const genders = ordered.map((p) => p.gender);
 
     let block = null;
     let blockZone = null;
     if (requestedCount > 1) {
       for (const zone of zoneOrder) {
-        block = findAdjacentBlock(zone, requestedCount);
+        block = findAdjacentBlock(zone, genders, travelingTogetherAll);
         if (block) {
           blockZone = zone;
           break;
@@ -287,16 +396,14 @@ exports.allocateSeat = functions.https.onRequest(async (req, res) => {
 
     const allocationsByPassenger = new Map();
     if (block) {
-      const ordered = orderForSelection(passengers);
       for (let i = 0; i < block.length; i++) {
         const seat = block[i];
         const p = ordered[i];
         occupiedGenderBySeat[seat] = p.gender;
         const riskScore = blockZone === "priority" ? 0.05 : (blockZone === "general" ? 0.1 : 0.2) + costFor(seat, p.gender);
-        allocationsByPassenger.set(p, { seatNumber: seat, zone: blockZone, riskScore });
+        allocationsByPassenger.set(p, { seatNumber: seat, zone: blockZone, riskScore, priorityReserved: false });
       }
     } else {
-      const ordered = orderForSelection(passengers);
       for (const p of ordered) {
         const result = allocateOne(p, new Set());
         if (!result) {
@@ -331,6 +438,7 @@ exports.allocateSeat = functions.https.onRequest(async (req, res) => {
         risk_score: result.riskScore,
         status: "active",
         qr_code: qrCode,
+        priority_reserved: result.priorityReserved === true,
       };
       await db.collection("seat_allocations").doc(allocId).set(allocationData);
 
@@ -340,6 +448,7 @@ exports.allocateSeat = functions.https.onRequest(async (req, res) => {
         zone: result.zone,
         riskScore: result.riskScore,
         qrCode: qrCode,
+        priority_reserved: result.priorityReserved === true,
       });
     }
 

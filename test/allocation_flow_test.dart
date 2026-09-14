@@ -8,6 +8,7 @@ Passenger _passenger({
   String mobilityStatus = 'none',
   bool safetyPreference = false,
   bool pregnant = false,
+  bool travelingTogether = false,
 }) {
   final now = DateTime.now();
   return Passenger(
@@ -20,6 +21,7 @@ Passenger _passenger({
     phoneNumber: '+94 77 000 0000',
     safetyPreference: safetyPreference,
     pregnant: pregnant,
+    travelingTogether: travelingTogether,
     createdDate: now,
     updatedDate: now,
   );
@@ -247,9 +249,13 @@ void main() {
       // exists for the two eligible companions to compete over.
       // Deliberately listing the male companion BEFORE the female one in
       // the input to prove the *engine* reorders them, not the caller.
+      // Both companions are eligible via a mobility need (not just
+      // safetyPreference), so the priority-reserve-buffer rule doesn't
+      // itself exclude them here - this test is isolating the gender-
+      // weighted ordering specifically.
       final primary = _passenger(id: 'g4_primary', gender: 'male'); // not priority-eligible
-      final maleCompanion = _passenger(id: 'g4_male', gender: 'male', safetyPreference: true);
-      final femaleCompanion = _passenger(id: 'g4_female', gender: 'female', safetyPreference: true);
+      final maleCompanion = _passenger(id: 'g4_male', gender: 'male', mobilityStatus: 'wheelchair');
+      final femaleCompanion = _passenger(id: 'g4_female', gender: 'female', mobilityStatus: 'wheelchair');
 
       final results = await service.allocateGroup(
         passengers: [primary, maleCompanion, femaleCompanion],
@@ -284,6 +290,80 @@ void main() {
       // passenger should land back on 4A (now free) if not excluded...
       final second = await _allocate(service, _passenger(id: 'p11', gender: 'female'), busId: busId);
       expect(second.seatNumber, equals('4A'), reason: 'the released seat should be free again');
+    });
+
+    test('General zone: a gender-safe seat farther from the front is chosen over a closer opposite-gender-adjacent seat', () async {
+      final service = AllocationService();
+      // Seed 4A(male),4B(female),4C(male),4D(female) occupied, leaving 4E
+      // free but unsafe (its only neighbour, 4D, is female) - while every
+      // row 5+ seat is completely free and therefore gender-safe.
+      final allocation = await _allocate(
+        service,
+        _passenger(id: 'a1', gender: 'male'),
+        busId: 'BUS_TEST_A',
+        availableGeneralSeats: kGeneralTotalSeats - 4,
+      );
+      expect(allocation.seatNumber, equals('5A'),
+          reason: 'the gender-safe seat, even though a row farther back, must beat the closer-but-unsafe 4E');
+    });
+
+    test('General zone: when the only remaining free seat is opposite-gender-adjacent, allocation still succeeds via the fallback tiebreak', () async {
+      final service = AllocationService();
+      // Only 6E is free; its one neighbour (6D) is seeded female, so no
+      // gender-safe seat exists anywhere in the zone.
+      final allocation = await _allocate(
+        service,
+        _passenger(id: 'b1', gender: 'male'),
+        busId: 'BUS_TEST_B',
+        availableGeneralSeats: 1,
+      );
+      expect(allocation.seatNumber, equals('6E'));
+    });
+
+    test('With only 2 free Priority seats left, a safety_preference-only passenger is routed to General (priority_reserved), while a mobility passenger still gets Priority', () async {
+      final service = AllocationService();
+
+      final safetyOnly = await _allocate(
+        service,
+        _passenger(id: 'c1', safetyPreference: true),
+        busId: 'BUS_TEST_C1',
+        availablePrioritySeats: 2,
+      );
+      expect(_rowOf(safetyOnly.seatNumber), greaterThan(3),
+          reason: 'a safety_preference-only passenger should be bumped to General once only 2 priority seats remain');
+      expect(safetyOnly.priorityReserved, isTrue);
+
+      final mobility = await _allocate(
+        service,
+        _passenger(id: 'c2', mobilityStatus: 'wheelchair'),
+        busId: 'BUS_TEST_C2',
+        availablePrioritySeats: 2,
+      );
+      expect(_rowOf(mobility.seatNumber), lessThanOrEqualTo(3),
+          reason: 'a passenger with a real mobility need should still get a priority seat even with only 2 left');
+      expect(mobility.priorityReserved, isFalse);
+    });
+
+    test('A 2-seat group with traveling_together=true and different genders is seated adjacent to each other successfully', () async {
+      final service = AllocationService();
+      final passengers = [
+        _passenger(id: 'd1', gender: 'male', travelingTogether: true),
+        _passenger(id: 'd2', gender: 'female', travelingTogether: true),
+      ];
+
+      final results = await service.allocateGroup(
+        passengers: passengers,
+        journeyId: 'JRN_TEST',
+        routeId: 'R_87',
+        busId: 'BUS_TEST_D',
+        boardingStop: 'Colombo (Pettah)',
+        alightingStop: 'Jaffna Main Bus Stand',
+      );
+
+      expect(results.length, 2);
+      final seats = results.map((r) => r.seatNumber).toSet();
+      expect(seats, equals({'4A', '4B'}),
+          reason: 'traveling_together should let differently-gendered companions sit adjacent to each other');
     });
   });
 }

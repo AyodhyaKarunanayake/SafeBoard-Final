@@ -312,6 +312,26 @@ class BookingConfirmationScreen extends StatelessWidget {
               ],
             ),
             const Text('Up to ${BookingProvider.maxSeatCount} seats per booking.', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: AppColors.backgroundLight, borderRadius: BorderRadius.circular(12)),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'We\'re comfortable sitting together regardless of gender',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                    ),
+                  ),
+                  Switch(
+                    value: bookingProvider.travelingTogether,
+                    activeColor: AppColors.priorityAccent,
+                    onChanged: (val) => bookingProvider.setTravelingTogether(val),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 12),
             for (var i = 0; i < bookingProvider.companions.length; i++) ...[
               _buildCompanionForm(bookingProvider, i),

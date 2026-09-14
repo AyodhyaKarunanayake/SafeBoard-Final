@@ -10,6 +10,10 @@ class Passenger {
   // Priority-zone eligibility criterion alongside safetyPreference and
   // mobilityStatus - see AllocationService._isPriorityEligible.
   final bool pregnant;
+  // Opt-in, whole-group exemption from the opposite-gender adjacency hard
+  // filter for group bookings - see AllocationService.findAdjacentBlock.
+  // Only meaningful when set the same on every passenger in a group.
+  final bool travelingTogether;
   final DateTime createdDate;
   final DateTime updatedDate;
   // Index into the preset avatar palette (see profile_screen.dart) - stands
@@ -31,6 +35,7 @@ class Passenger {
     required this.updatedDate,
     this.avatarColorIndex = 0,
     this.pregnant = false,
+    this.travelingTogether = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -44,6 +49,7 @@ class Passenger {
       'phone_number': phoneNumber,
       'safety_preference': safetyPreference,
       'pregnant': pregnant,
+      'traveling_together': travelingTogether,
       'created_date': createdDate.toIso8601String(),
       'updated_date': updatedDate.toIso8601String(),
       'avatar_color_index': avatarColorIndex,
@@ -61,6 +67,7 @@ class Passenger {
       phoneNumber: map['phone_number'] ?? '',
       safetyPreference: map['safety_preference'] ?? false,
       pregnant: map['pregnant'] ?? false,
+      travelingTogether: map['traveling_together'] ?? false,
       createdDate: map['created_date'] != null
           ? DateTime.parse(map['created_date'])
           : DateTime.now(),
@@ -80,6 +87,7 @@ class Passenger {
     String? phoneNumber,
     bool? safetyPreference,
     bool? pregnant,
+    bool? travelingTogether,
     int? avatarColorIndex,
   }) {
     return Passenger(
@@ -92,6 +100,7 @@ class Passenger {
       phoneNumber: phoneNumber ?? this.phoneNumber,
       safetyPreference: safetyPreference ?? this.safetyPreference,
       pregnant: pregnant ?? this.pregnant,
+      travelingTogether: travelingTogether ?? this.travelingTogether,
       createdDate: createdDate,
       updatedDate: DateTime.now(),
       avatarColorIndex: avatarColorIndex ?? this.avatarColorIndex,

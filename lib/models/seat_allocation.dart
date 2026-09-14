@@ -12,6 +12,11 @@ class SeatAllocation {
   final double riskScore; // 0.0 - 1.0
   final String status;
   final String qrCode;
+  // True when this passenger was priority-eligible only via
+  // safetyPreference, but the last 2 free priority seats were held back
+  // for mobility/pregnancy needs instead - see
+  // AllocationService._allocateOne's priority-reserve-buffer logic.
+  final bool priorityReserved;
 
   SeatAllocation({
     required this.allocationId,
@@ -27,6 +32,7 @@ class SeatAllocation {
     required this.riskScore,
     required this.status,
     required this.qrCode,
+    this.priorityReserved = false,
   });
 
   // A short, human-readable booking reference (e.g. "SB-3K9F2A") a
@@ -52,6 +58,7 @@ class SeatAllocation {
       'risk_score': riskScore,
       'status': status,
       'qr_code': qrCode,
+      'priority_reserved': priorityReserved,
     };
   }
 
@@ -72,6 +79,7 @@ class SeatAllocation {
       riskScore: (map['risk_score'] ?? 0.0).toDouble(),
       status: map['status'] ?? 'active',
       qrCode: map['qr_code'] ?? '',
+      priorityReserved: map['priority_reserved'] ?? false,
     );
   }
 }

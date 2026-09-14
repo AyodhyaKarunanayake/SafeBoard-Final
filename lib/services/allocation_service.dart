@@ -95,7 +95,10 @@ class _AllocResult {
   final String seatNumber;
   final String zone; // priority | general | limited | standing
   final double riskScore;
-  const _AllocResult(this.seatNumber, this.zone, this.riskScore);
+  // True when this passenger was bumped out of Priority by the reserve
+  // buffer (see AllocationService._allocateOne).
+  final bool priorityReserved;
+  const _AllocResult(this.seatNumber, this.zone, this.riskScore, {this.priorityReserved = false});
 }
 
 // Per-bus seat occupancy, held in memory for the app session (this is a
@@ -209,6 +212,10 @@ class AllocationService {
     );
   }
 
+  // Kept for other cosmetic risk-score computations (e.g. the group
+  // adjacent-block path) - no longer used to DECIDE which seat
+  // pickBestScoredSeat returns; see the hard-filter-then-tiebreak logic
+  // below instead.
   double _costFor(_BusSeatMap map, String seat, String passengerGender) {
     double cost = _rowOfSeat(seat) * 0.02;
     for (final neighbor in _neighborsOf(seat)) {
@@ -220,54 +227,89 @@ class AllocationService {
     return cost;
   }
 
+  // True if none of [seat]'s physical neighbours are currently occupied by
+  // someone of a different gender than [gender]. This is the Stage A hard
+  // filter used by pickBestScoredSeat and (in a group-aware form) by
+  // findAdjacentBlock.
+  bool _isGenderSafeSeat(_BusSeatMap map, String seat, String gender) {
+    for (final neighbor in _neighborsOf(seat)) {
+      final occupant = map.seatGender[neighbor];
+      if (occupant != null && occupant != gender) return false;
+    }
+    return true;
+  }
+
+  int _compareByRowThenLetter(String a, String b) {
+    final rowCompare = _rowOfSeat(a).compareTo(_rowOfSeat(b));
+    return rowCompare != 0 ? rowCompare : a.compareTo(b);
+  }
+
   // Nearest-to-front free priority seat - no cost-scoring, priority
   // passengers always get the closest available seat to the front door.
   String? _pickNearestPrioritySeat(_BusSeatMap map, Set<String> exclude) {
     final free = map.freeSeatsIn('priority').where((s) => !exclude.contains(s)).toList();
     if (free.isEmpty) return null;
-    free.sort((a, b) {
-      final rowCompare = _rowOfSeat(a).compareTo(_rowOfSeat(b));
-      return rowCompare != 0 ? rowCompare : a.compareTo(b);
-    });
+    free.sort(_compareByRowThenLetter);
     return free.first;
   }
 
-  // Lowest opposite-gender-proximity cost, tie-broken deterministically -
-  // used for both General and Limited zones.
+  // Two-stage selection, used for both General and Limited zones:
+  //   Stage A (hard filter) - keep only free seats with no opposite-gender
+  //   neighbour.
+  //   Stage B (soft tiebreak) - pick the lowest-row seat among survivors
+  //   (alphabetical tiebreak); if nothing survives the hard filter (every
+  //   free seat has an opposite-gender neighbour), fall back to the same
+  //   tiebreak across every free seat in the zone, ignoring gender.
   String? _pickBestScoredSeat(_BusSeatMap map, String zone, String gender, Set<String> exclude) {
     final free = map.freeSeatsIn(zone).where((s) => !exclude.contains(s)).toList();
     if (free.isEmpty) return null;
-    free.sort((a, b) {
-      final costCompare = _costFor(map, a, gender).compareTo(_costFor(map, b, gender));
-      return costCompare != 0 ? costCompare : a.compareTo(b);
-    });
-    return free.first;
+
+    final genderSafe = free.where((s) => _isGenderSafeSeat(map, s, gender)).toList();
+    final candidates = genderSafe.isNotEmpty ? genderSafe : free;
+    candidates.sort(_compareByRowThenLetter);
+    return candidates.first;
   }
+
+  // 2 or fewer free priority seats left -> reserved for passengers with a
+  // real mobility need or who are pregnant; a passenger who is only
+  // priority-eligible via safetyPreference is bumped to General instead
+  // (flagged via priorityReserved) rather than taking one of the last
+  // priority seats from someone who needs it more.
+  static const int _priorityReserveThreshold = 2;
 
   // The core per-passenger algorithm (steps 1-5): priority (if eligible) ->
   // general -> limited -> standing -> reject. Used both for a single-seat
   // booking and as the per-passenger fallback when a group can't be seated
   // together.
   _AllocResult _allocateOne(_BusSeatMap map, Passenger passenger, Set<String> exclude) {
+    var priorityReserved = false;
     if (_isPriorityEligible(passenger)) {
-      final seat = _pickNearestPrioritySeat(map, exclude);
-      if (seat != null) return _AllocResult(seat, 'priority', 0.05);
+      final freeCount = map.freeSeatsIn('priority').where((s) => !exclude.contains(s)).length;
+      final hasStrongPriorityNeed = passenger.mobilityStatus != 'none' || passenger.pregnant;
+      if (freeCount <= _priorityReserveThreshold && !hasStrongPriorityNeed) {
+        priorityReserved = true; // safetyPreference-only - falls through, flagged for the UI
+      } else {
+        final seat = _pickNearestPrioritySeat(map, exclude);
+        if (seat != null) return _AllocResult(seat, 'priority', 0.05);
+      }
     }
 
     final generalSeat = _pickBestScoredSeat(map, 'general', passenger.gender, exclude);
     if (generalSeat != null) {
-      return _AllocResult(generalSeat, 'general', 0.1 + _costFor(map, generalSeat, passenger.gender));
+      final risk = 0.1 + (_isGenderSafeSeat(map, generalSeat, passenger.gender) ? 0.0 : 0.15);
+      return _AllocResult(generalSeat, 'general', risk, priorityReserved: priorityReserved);
     }
 
     final limitedSeat = _pickBestScoredSeat(map, 'limited', passenger.gender, exclude);
     if (limitedSeat != null) {
-      return _AllocResult(limitedSeat, 'limited', 0.2 + _costFor(map, limitedSeat, passenger.gender));
+      final risk = 0.2 + (_isGenderSafeSeat(map, limitedSeat, passenger.gender) ? 0.0 : 0.15);
+      return _AllocResult(limitedSeat, 'limited', risk, priorityReserved: priorityReserved);
     }
 
     if (!map.standingFull) {
       final slot = map.standingOccupied + 1;
       final ratio = map.standingOccupied / kStandingCapacity;
-      return _AllocResult('Standing-$slot', 'standing', 0.5 + ratio * 0.3);
+      return _AllocResult('Standing-$slot', 'standing', 0.5 + ratio * 0.3, priorityReserved: priorityReserved);
     }
 
     throw const SeatAllocationException(
@@ -283,29 +325,68 @@ class AllocationService {
     }
   }
 
-  // Searches each row's contiguous blocks, in zone row order, for [count]
-  // free seats sitting next to each other - the "book a group together"
-  // case. Returns null if no single block in the zone can fit the whole
-  // group (this never searches across rows or across the aisle).
-  List<String>? _findAdjacentBlock(_BusSeatMap map, String zone, int count) {
+  // Gender-safety check for a candidate group window: for each seat in the
+  // window (assigned to the passenger at the same index in [genders]),
+  // every neighbour must either be a fellow group member (exempted when
+  // [travelingTogether]) or - for neighbours outside the window, i.e. real,
+  // possibly-already-occupied seats belonging to someone else on the bus -
+  // not of a different gender. The hard filter always applies to outside
+  // neighbours, traveling_together or not.
+  bool _windowIsGenderSafe(_BusSeatMap map, List<String> window, List<String> genders, bool travelingTogether) {
+    for (var i = 0; i < window.length; i++) {
+      final seat = window[i];
+      final passengerGender = genders[i];
+      for (final neighbor in _neighborsOf(seat)) {
+        final neighborIndexInWindow = window.indexOf(neighbor);
+        if (neighborIndexInWindow != -1) {
+          if (travelingTogether) continue; // fellow group member - mutually exempted
+          if (genders[neighborIndexInWindow] != passengerGender) return false;
+        } else {
+          final occupant = map.seatGender[neighbor];
+          if (occupant != null && occupant != passengerGender) return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  // Searches each row's contiguous blocks, in zone row order, for
+  // genders.length free seats sitting next to each other - the "book a
+  // group together" case.
+  //   Stage A (hard filter) - among windows that fit and are entirely free,
+  //   prefer one where every seat is gender-safe (see
+  //   _windowIsGenderSafe); opposite-gender members of THIS SAME group are
+  //   exempted from each other when [travelingTogether].
+  //   Stage B (soft tiebreak) - the first (lowest-row) gender-safe window
+  //   wins; if none exists anywhere in the zone, fall back to the first
+  //   free window regardless of gender, so the group still gets seated
+  //   together.
+  // Returns null only if no free window of the right size exists at all.
+  List<String>? _findAdjacentBlock(_BusSeatMap map, String zone, List<String> genders, {bool travelingTogether = false}) {
+    final count = genders.length;
     final rows = zone == 'priority'
         ? _priorityRows
         : zone == 'general'
             ? _generalRows
             : [..._limitedRows, _rearBenchRow];
 
+    List<String>? fallbackWindow;
+
     for (final row in rows) {
       for (final block in _rowBlocks(row)) {
         if (block.length < count) continue;
         for (var start = 0; start + count <= block.length; start++) {
           final window = block.sublist(start, start + count);
-          if (window.every((s) => map.seatGender[s] == null)) {
+          if (!window.every((s) => map.seatGender[s] == null)) continue;
+
+          fallbackWindow ??= window;
+          if (_windowIsGenderSafe(map, window, genders, travelingTogether)) {
             return window;
           }
         }
       }
     }
-    return null;
+    return fallbackWindow;
   }
 
   // Primary passenger keeps first pick (it's their own booking); among the
@@ -381,6 +462,7 @@ class AllocationService {
           riskScore: (data['riskScore'] ?? 0.05).toDouble(),
           status: 'active',
           qrCode: data['qrCode'] ?? 'SB-$journeyId-1A-alloc_001',
+          priorityReserved: data['priority_reserved'] ?? false,
         );
       }
     } catch (_) {
@@ -426,14 +508,20 @@ class AllocationService {
       availableStanding: availableStanding,
     );
 
-    final count = passengers.length;
     final allEligible = passengers.every(_isPriorityEligible);
     final zoneOrder = allEligible ? const ['priority', 'general', 'limited'] : const ['general', 'limited'];
+    final travelingTogetherAll = passengers.every((p) => p.travelingTogether);
+
+    // Seat-assignment order is decided up front (gender-weighted, primary
+    // first) so the adjacency search can check each candidate window
+    // against the actual genders that would end up sitting in it.
+    final ordered = _orderForSelection(passengers);
+    final genders = ordered.map((p) => p.gender).toList();
 
     List<String>? block;
     String? blockZone;
     for (final zone in zoneOrder) {
-      block = _findAdjacentBlock(map, zone, count);
+      block = _findAdjacentBlock(map, zone, genders, travelingTogether: travelingTogetherAll);
       if (block != null) {
         blockZone = zone;
         break;
@@ -443,7 +531,6 @@ class AllocationService {
     final byPassenger = <Passenger, SeatAllocation>{};
 
     if (block != null && blockZone != null) {
-      final ordered = _orderForSelection(passengers);
       for (var i = 0; i < block.length; i++) {
         final seat = block[i];
         final p = ordered[i];
@@ -463,7 +550,6 @@ class AllocationService {
       // Couldn't seat the group together in any single zone - fall back to
       // the normal individual allocation logic for each passenger, still
       // sharing one seat map so nobody collides.
-      final ordered = _orderForSelection(passengers);
       for (final p in ordered) {
         final result = _allocateOne(map, p, const {});
         _commit(map, result, p);
@@ -506,6 +592,7 @@ class AllocationService {
       riskScore: result.riskScore,
       status: 'active',
       qrCode: qrCode,
+      priorityReserved: result.priorityReserved,
     );
 
     try {

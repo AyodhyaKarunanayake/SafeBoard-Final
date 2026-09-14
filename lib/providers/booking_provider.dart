@@ -49,11 +49,21 @@ class BookingProvider with ChangeNotifier {
   int _seatCount = 1;
   final List<CompanionPreference> _companions = [];
   List<SeatAllocation> _groupAllocations = [];
+  // Whole-group opt-in: everyone in this booking is comfortable being
+  // seated adjacent to a different gender - see
+  // AllocationService.findAdjacentBlock's traveling-together exemption.
+  bool _travelingTogether = false;
 
   int get seatCount => _seatCount;
   bool get isGroupBooking => _seatCount > 1;
   List<CompanionPreference> get companions => List.unmodifiable(_companions);
   List<SeatAllocation> get groupAllocations => List.unmodifiable(_groupAllocations);
+  bool get travelingTogether => _travelingTogether;
+
+  void setTravelingTogether(bool value) {
+    _travelingTogether = value;
+    notifyListeners();
+  }
 
   // Seat-suggestion history for the current booking: index 0 is the
   // original allocation; each "request another seat" appends one more, up
@@ -294,6 +304,7 @@ class BookingProvider with ChangeNotifier {
     while (_companions.length > neededCompanions) {
       _companions.removeLast();
     }
+    if (clamped == 1) _travelingTogether = false;
     notifyListeners();
   }
 
@@ -336,6 +347,7 @@ class BookingProvider with ChangeNotifier {
     _seatCount = 1;
     _companions.clear();
     _groupAllocations = [];
+    _travelingTogether = false;
     _searchDate = null;
     _searchTime = null;
     _searchBoardingStop = null;
@@ -594,7 +606,7 @@ class BookingProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final passengers = <Passenger>[primary];
+      final passengers = <Passenger>[primary.copyWith(travelingTogether: _travelingTogether)];
       for (var i = 0; i < _companions.length; i++) {
         final c = _companions[i];
         passengers.add(Passenger(
@@ -607,6 +619,7 @@ class BookingProvider with ChangeNotifier {
           phoneNumber: primary.phoneNumber,
           safetyPreference: c.safetyPreference,
           pregnant: c.pregnant,
+          travelingTogether: _travelingTogether,
           createdDate: DateTime.now(),
           updatedDate: DateTime.now(),
         ));
