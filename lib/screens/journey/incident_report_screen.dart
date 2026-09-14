@@ -149,7 +149,7 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
 
             // What happened? 5 Tappable Rows
             const Text('What happened?',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.primaryNavy)),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primaryNavy)),
             const SizedBox(height: 10),
             Column(
               children: _types.map((type) {
@@ -193,7 +193,7 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
 
             // Severity Buttons
             const Text('Severity Level',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.primaryNavy)),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primaryNavy)),
             const SizedBox(height: 10),
             Row(
               children: [

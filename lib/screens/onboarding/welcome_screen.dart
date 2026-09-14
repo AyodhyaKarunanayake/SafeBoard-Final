@@ -29,27 +29,26 @@ class WelcomeScreen extends StatelessWidget {
             child: Column(
               children: [
                 const Spacer(flex: 3),
-                Column(
+                const Column(
                   children: [
-                    const Text(
+                    Text(
                       'SafeBoard',
                       style: TextStyle(
-                        fontSize: 42,
+                        fontSize: 32,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
                         letterSpacing: 0.5,
+                        height: 1.0,
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    Container(width: 36, height: 3, decoration: BoxDecoration(color: Colors.white.withOpacity(0.5), borderRadius: BorderRadius.circular(2))),
-                    const SizedBox(height: 14),
-                    const Text(
+                    SizedBox(height: 10),
+                    Text(
                       'Smarter Seating, Safer Journeys',
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 14,
                         color: Colors.white70,
                         fontWeight: FontWeight.w500,
-                        letterSpacing: 0.3,
+                        letterSpacing: 0.4,
                       ),
                     ),
                   ],
@@ -59,16 +58,22 @@ class WelcomeScreen extends StatelessWidget {
                   children: [
                     SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => context.go('/register'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppColors.primaryNavy,
-                          minimumSize: const Size(double.infinity, 52),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          elevation: 0,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 20, offset: const Offset(0, 8))],
                         ),
-                        child: const Text('Create account', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                        child: ElevatedButton(
+                          onPressed: () => context.go('/register'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: AppColors.primaryNavy,
+                            minimumSize: const Size(double.infinity, 54),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            elevation: 0,
+                          ),
+                          child: const Text('Create account', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -77,14 +82,14 @@ class WelcomeScreen extends StatelessWidget {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
                         side: const BorderSide(color: Colors.white38, width: 1.5),
-                        minimumSize: const Size(double.infinity, 52),
+                        minimumSize: const Size(double.infinity, 54),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
                       child: const Text(
                         'Sign in',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],

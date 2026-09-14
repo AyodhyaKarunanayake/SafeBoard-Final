@@ -5,7 +5,7 @@ class BusSchedule {
   final String busNumber;
   final String routeId;
   final String routeName;
-  final String busType; // e.g., 'High Capacity AC', 'Semi-Express', 'Standard City'
+  final String busType; // e.g., 'Semi Luxury', 'Normal', 'Semi Luxury Sleeper'
   final DateTime departureDateTime;
   final DateTime arrivalDateTime;
   final String startPoint;

@@ -41,7 +41,7 @@ class TonalButton extends StatelessWidget {
               Flexible(
                 child: Text(
                   label,
-                  style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: dense ? 12 : 13.5),
+                  style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: dense ? 12 : 14),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),

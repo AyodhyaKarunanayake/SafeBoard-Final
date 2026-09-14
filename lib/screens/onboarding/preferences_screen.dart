@@ -71,7 +71,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                           'Priority Zone Preference',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                            fontSize: 16,
                             color: AppColors.textDark,
                           ),
                         ),

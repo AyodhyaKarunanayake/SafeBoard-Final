@@ -154,7 +154,7 @@ class BusDiagram extends StatelessWidget {
         children: [
           Container(width: 7, height: 7, decoration: BoxDecoration(color: accent, shape: BoxShape.circle)),
           const SizedBox(width: 5),
-          Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: accent)),
+          Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: accent)),
         ],
       ),
     );
@@ -176,7 +176,7 @@ class BusDiagram extends StatelessWidget {
 
   Widget _buildDoorCell(_Dims dims, {required String label, required IconData icon}) {
     return Container(
-      height: 46 * dims.scale,
+      height: 48 * dims.scale,
       decoration: BoxDecoration(
         color: AppColors.primaryNavy.withOpacity(0.07),
         borderRadius: BorderRadius.circular(8),
@@ -190,7 +190,7 @@ class BusDiagram extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             label,
-            style: TextStyle(fontSize: 9 * dims.scale, fontWeight: FontWeight.bold, color: AppColors.primaryNavy.withOpacity(0.9)),
+            style: TextStyle(fontSize: 10 * dims.scale, fontWeight: FontWeight.bold, color: AppColors.primaryNavy.withOpacity(0.9)),
           ),
         ],
       ),
@@ -202,7 +202,7 @@ class BusDiagram extends StatelessWidget {
   // or for the navy "this is your seat" highlight used elsewhere.
   Widget _buildDriverSeatCell(_Dims dims) {
     return Container(
-      height: 46 * dims.scale,
+      height: 48 * dims.scale,
       decoration: BoxDecoration(
         color: Colors.grey.shade300,
         borderRadius: BorderRadius.circular(8),
@@ -214,7 +214,7 @@ class BusDiagram extends StatelessWidget {
         children: [
           Icon(Icons.event_seat, size: 18 * dims.scale, color: Colors.grey.shade700),
           const SizedBox(height: 2),
-          Text('Driver', style: TextStyle(fontSize: 9 * dims.scale, fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
+          Text('Driver', style: TextStyle(fontSize: 10 * dims.scale, fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
         ],
       ),
     );
@@ -386,7 +386,7 @@ class BusDiagram extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.event_seat, size: 16 * dims.scale, color: Colors.white),
-                Text(seatNo, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 9 * dims.scale)),
+                Text(seatNo, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 10 * dims.scale)),
               ],
             ),
             Positioned(
@@ -420,7 +420,7 @@ class BusDiagram extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.event_seat, size: 15 * dims.scale, color: accent),
-          Text(seatNo, style: TextStyle(color: accent, fontSize: 8 * dims.scale, fontWeight: FontWeight.w700)),
+          Text(seatNo, style: TextStyle(color: accent, fontSize: 10 * dims.scale, fontWeight: FontWeight.w700)),
         ],
       ),
     );

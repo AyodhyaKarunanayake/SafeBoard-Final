@@ -49,7 +49,7 @@ class ProfileScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Choose your avatar color', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.primaryNavy)),
+            const Text('Choose your avatar color', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primaryNavy)),
             const SizedBox(height: 4),
             const Text('Your initials stay the same, just pick a color that feels like you.', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
             const SizedBox(height: 20),
@@ -366,7 +366,7 @@ class ProfileScreen extends StatelessWidget {
               decoration: BoxDecoration(color: Colors.white.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
               child: Text(
                 'Member since ${_formatMemberSince(passenger!.createdDate)}',
-                style: const TextStyle(color: Colors.white70, fontSize: 10.5, fontWeight: FontWeight.w600),
+                style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -491,7 +491,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
           ),
           const Padding(
             padding: EdgeInsets.only(top: 4),
-            child: Text('Your sign-up email can\'t be changed', style: TextStyle(fontSize: 10.5, color: AppColors.textMuted)),
+            child: Text('Your sign-up email can\'t be changed', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
           ),
           const SizedBox(height: 14),
           _sheetLabel('Phone Number'),
@@ -514,7 +514,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                 selectedColor: AppColors.primaryNavy,
                 backgroundColor: AppColors.backgroundLight,
                 side: BorderSide(color: isSelected ? AppColors.primaryNavy : AppColors.borderLight),
-                labelStyle: TextStyle(color: isSelected ? Colors.white : AppColors.textDark, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500, fontSize: 12.5),
+                labelStyle: TextStyle(color: isSelected ? Colors.white : AppColors.textDark, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500, fontSize: 13),
                 onSelected: (selected) {
                   if (selected) setState(() => _mobilityStatus = opt['value']!);
                 },

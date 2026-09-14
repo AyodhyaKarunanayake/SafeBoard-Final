@@ -116,7 +116,7 @@ class HistoryScreen extends StatelessWidget {
         children: [
           Text('Journey History', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
           SizedBox(height: 6),
-          Text('Every trip you\'ve completed on SafeBoard.', style: TextStyle(fontSize: 12.5, color: Colors.white70)),
+          Text('Every trip you\'ve completed on SafeBoard.', style: TextStyle(fontSize: 13, color: Colors.white70)),
         ],
       ),
     );
@@ -133,7 +133,7 @@ class HistoryScreen extends StatelessWidget {
             const SizedBox(height: 14),
             const Text(
               'No completed trips yet',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textDark),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark),
             ),
             const SizedBox(height: 6),
             const Text(
@@ -213,7 +213,7 @@ class HistoryScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                         margin: const EdgeInsets.only(right: 6),
                         decoration: BoxDecoration(color: AppColors.priorityAccent.withOpacity(0.12), borderRadius: BorderRadius.circular(6)),
-                        child: const Text('BULK', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: AppColors.priorityAccent)),
+                        child: const Text('BULK', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.priorityAccent)),
                       ),
                     ],
                     ZonePill(zone: zone, small: true),

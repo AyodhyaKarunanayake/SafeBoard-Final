@@ -47,7 +47,7 @@ _BrandTheme _themeFor(_CardBrand brand) {
     case _CardBrand.amex:
       return const _BrandTheme(
         [Color(0xFF006B54), Color(0xFF00A377)],
-        Text('AMEX', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+        Text('AMEX', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
       );
     case _CardBrand.generic:
       return const _BrandTheme(
@@ -156,7 +156,7 @@ class VirtualCardPreview extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
-                    child: const Text('DEBIT', style: TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                    child: const Text('DEBIT', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
                   ),
                 ],
               ),
@@ -177,7 +177,7 @@ class VirtualCardPreview extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('CARD HOLDER', style: TextStyle(color: Colors.white54, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                    const Text('CARD HOLDER', style: TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
                     const SizedBox(height: 2),
                     Text(
                       holderName.trim().isEmpty ? 'YOUR NAME' : holderName.toUpperCase(),
@@ -191,7 +191,7 @@ class VirtualCardPreview extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text('EXPIRES', style: TextStyle(color: Colors.white54, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                  const Text('EXPIRES', style: TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
                   const SizedBox(height: 2),
                   Text(
                     expiry.isEmpty ? 'MM/YY' : expiry,
@@ -243,7 +243,7 @@ class VirtualCardPreview extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(20, 0, 20, 16),
             child: Text(
               'This is a simulated card for demo checkout - no real card is charged.',
-              style: TextStyle(color: Colors.white60, fontSize: 9, height: 1.4),
+              style: TextStyle(color: Colors.white60, fontSize: 10, height: 1.4),
             ),
           ),
         ],

@@ -243,7 +243,7 @@ class _JourneyScreenState extends State<JourneyScreen> with SingleTickerProvider
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Text the conductor', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.primaryNavy)),
+            const Text('Text the conductor', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primaryNavy)),
             const SizedBox(height: 4),
             const Text('For non-emergency questions only. Use the SOS button for anything urgent.',
                 style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
@@ -298,7 +298,7 @@ class _JourneyScreenState extends State<JourneyScreen> with SingleTickerProvider
               children: [
                 Icon(Icons.navigation_outlined, size: 48, color: AppColors.textMuted.withOpacity(0.6)),
                 const SizedBox(height: 12),
-                const Text('No journey in progress', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+                const Text('No journey in progress', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark)),
                 const SizedBox(height: 6),
                 const Text(
                   'Once the conductor checks your ticket and you enter your boarding code from My Ticket, live tracking and safety tools show up here.',
@@ -501,7 +501,7 @@ class _JourneyScreenState extends State<JourneyScreen> with SingleTickerProvider
                     children: [
                       Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.greenAccent, shape: BoxShape.circle)),
                       const SizedBox(width: 5),
-                      const Text('JOURNEY IN PROGRESS', style: TextStyle(color: Colors.greenAccent, fontSize: 9, fontWeight: FontWeight.w900)),
+                      const Text('JOURNEY IN PROGRESS', style: TextStyle(color: Colors.greenAccent, fontSize: 10, fontWeight: FontWeight.w900)),
                     ],
                   ),
                 ),
@@ -571,13 +571,13 @@ class _JourneyScreenState extends State<JourneyScreen> with SingleTickerProvider
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(nextHaltText,
-                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppColors.primaryNavy),
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primaryNavy),
                       overflow: TextOverflow.ellipsis),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(color: AppColors.generalBg, borderRadius: BorderRadius.circular(6)),
-                  child: const Text('LIVE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: AppColors.generalAccent)),
+                  child: const Text('LIVE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.generalAccent)),
                 ),
               ],
             ),
@@ -661,7 +661,7 @@ class _JourneyScreenState extends State<JourneyScreen> with SingleTickerProvider
                                   borderRadius: BorderRadius.circular(8),
                                   boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 4, offset: const Offset(0, 2))],
                                 ),
-                                child: const Text("You're here", style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
+                                child: const Text("You're here", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
                               ),
                               const SizedBox(height: 3),
                               Container(
@@ -784,7 +784,7 @@ class _JourneyScreenState extends State<JourneyScreen> with SingleTickerProvider
           Expanded(
             child: Text(
               '$count of $capacity seats occupied in your zone right now',
-              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.getZoneText(zone.key)),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.getZoneText(zone.key)),
             ),
           ),
         ],
@@ -837,8 +837,8 @@ class _JourneyScreenState extends State<JourneyScreen> with SingleTickerProvider
                         children: [
                           Text(stop,
                               style: TextStyle(fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal, fontSize: 13, color: isCurrent ? AppColors.primaryNavy : AppColors.textDark)),
-                          if (isFirst) const Text('Boarding halt', style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
-                          if (isLast) const Text('Destination', style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
+                          if (isFirst) const Text('Boarding halt', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                          if (isLast) const Text('Destination', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
                         ],
                       ),
                     ),
@@ -846,7 +846,7 @@ class _JourneyScreenState extends State<JourneyScreen> with SingleTickerProvider
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(color: AppColors.primaryNavy, borderRadius: BorderRadius.circular(10)),
-                        child: const Text('NOW', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                        child: const Text('NOW', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                       ),
                   ],
                 ),
@@ -892,7 +892,7 @@ class _JourneyScreenState extends State<JourneyScreen> with SingleTickerProvider
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Fare Reference', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.primaryNavy)),
+            const Text('Fare Reference', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primaryNavy)),
             const SizedBox(height: 16),
             if (isPaid) ...[
               QRCodeWidget(data: ticket.allocation.qrCode, size: 150),

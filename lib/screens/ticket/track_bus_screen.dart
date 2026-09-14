@@ -131,7 +131,7 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(bus.busNumber, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+                    Text(bus.busNumber, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark)),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(color: progress.statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
@@ -210,7 +210,7 @@ class _TrackBusScreenState extends State<TrackBusScreen> {
               const Text(
                 'Your bus hasn\'t started this trip yet',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark),
               ),
               const SizedBox(height: 8),
               Text(

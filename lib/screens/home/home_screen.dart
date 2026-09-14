@@ -56,7 +56,7 @@ class HomeScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Hello, ${passenger?.name.split(' ').first ?? 'Passenger'} 👋',
+                            '${_greeting()}, ${passenger?.name.split(' ').first ?? 'Passenger'}!',
                             style: const TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
@@ -65,7 +65,7 @@ class HomeScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           const Text(
-                            'Sri Lanka Gender-Aware Transport',
+                            'Your Smart Bus Companion',
                             style:
                                 TextStyle(color: Colors.white70, fontSize: 12),
                           ),
@@ -195,7 +195,7 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               const Text(
-                'SafeBoard allocates you a safe, gender-aware seat on Sri Lankan public transport.',
+                'SafeBoard allocates you a safe, well-matched seat on Sri Lankan public transport.',
                 style:
                     TextStyle(fontSize: 13, color: Colors.white70, height: 1.4),
               ),
@@ -207,7 +207,7 @@ class HomeScreen extends StatelessWidget {
                   icon: const Icon(Icons.event_seat_rounded, size: 18),
                   label: const Text(
                     'Book a Seat',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
@@ -260,7 +260,7 @@ class HomeScreen extends StatelessWidget {
                 color: AppColors.priorityAccent,
                 title: 'Seat auto-allocated',
                 subtitle:
-                    'Our algorithm picks your safest seat based on gender & preferences.',
+                    'Our algorithm picks your safest seat based on your safety preferences.',
               ),
               const Padding(
                 padding: EdgeInsets.only(left: 48),
@@ -301,7 +301,7 @@ class HomeScreen extends StatelessWidget {
           context,
           routeNo: '87',
           name: 'Colombo (Pettah) ➔ Jaffna',
-          type: '$totalStops Halts · Inter-Provincial AC Express',
+          type: '$totalStops Halts · Semi Luxury & Normal',
         ),
         const SizedBox(height: 24),
 
@@ -324,7 +324,7 @@ class HomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Gender-Aware Seating',
+                      'Smart Seat Allocation',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
@@ -492,7 +492,7 @@ class HomeScreen extends StatelessWidget {
           context,
           routeNo: '87',
           name: 'Colombo (Pettah) ➔ Jaffna',
-          type: '$totalStops Halts · Inter-Provincial AC Express',
+          type: '$totalStops Halts · Semi Luxury & Normal',
         ),
         const SizedBox(height: 20),
 
@@ -617,7 +617,7 @@ class HomeScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(6)),
                           child: const Text('BULK',
                               style: TextStyle(
-                                  fontSize: 8,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.w900,
                                   color: AppColors.priorityAccent)),
                         ),
@@ -631,7 +631,7 @@ class HomeScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(6)),
                         child: Text(statusLabel,
                             style: TextStyle(
-                                fontSize: 8,
+                                fontSize: 10,
                                 fontWeight: FontWeight.w900,
                                 color: accent)),
                       ),
@@ -751,5 +751,14 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // Time-of-day greeting instead of a static "Hello" - the same pattern
+  // most modern apps use for their home header.
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   }
 }

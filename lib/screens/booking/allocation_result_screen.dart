@@ -152,7 +152,7 @@ class AllocationResultScreen extends StatelessWidget {
                           Text(
                             isStanding ? 'Standing' : seatNumber,
                             style: TextStyle(
-                              fontSize: isStanding ? 28 : 42,
+                              fontSize: isStanding ? 28 : 32,
                               fontWeight: FontWeight.w900,
                               color: zoneAccent,
                               height: 1.0,
@@ -184,7 +184,7 @@ class AllocationResultScreen extends StatelessWidget {
                               children: [
                                 const Text(
                                   'BOOKING REF',
-                                  style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: AppColors.textMuted, letterSpacing: 0.5),
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.textMuted, letterSpacing: 0.5),
                                 ),
                                 Text(
                                   referenceCode,
@@ -199,7 +199,7 @@ class AllocationResultScreen extends StatelessWidget {
                             child: Text(
                               'Your boarding QR unlocks after payment',
                               textAlign: TextAlign.right,
-                              style: TextStyle(fontSize: 9, color: zoneText.withOpacity(0.8)),
+                              style: TextStyle(fontSize: 10, color: zoneText.withOpacity(0.8)),
                             ),
                           ),
                         ],
@@ -229,7 +229,7 @@ class AllocationResultScreen extends StatelessWidget {
                       children: [
                         const Text(
                           'BOARDING',
-                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.textMuted),
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textMuted),
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -256,7 +256,7 @@ class AllocationResultScreen extends StatelessWidget {
                       children: [
                         const Text(
                           'ALIGHTING',
-                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.textMuted),
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textMuted),
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -505,7 +505,7 @@ class AllocationResultScreen extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text('$boarding → $alighting', style: const TextStyle(color: Colors.white70, fontSize: 12)),
                   const SizedBox(height: 16),
-                  Text('Rs. ${totalFare.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900, height: 1.0)),
+                  Text('Rs. ${totalFare.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, height: 1.0)),
                   const SizedBox(height: 4),
                   Text('${group.length} × Rs. ${perSeatFare.toStringAsFixed(0)} total', style: const TextStyle(color: Colors.white70, fontSize: 11)),
                 ],

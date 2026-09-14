@@ -148,7 +148,7 @@ class _MyTicketScreenState extends State<MyTicketScreen> {
                   ] else ...[
                     Text(
                       alloc.referenceCode,
-                      style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: AppColors.primaryNavy, letterSpacing: 1),
+                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: AppColors.primaryNavy, letterSpacing: 1),
                     ),
                     const SizedBox(height: 6),
                     const Text(

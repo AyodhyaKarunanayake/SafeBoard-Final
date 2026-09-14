@@ -78,7 +78,7 @@ class IncidentHistoryScreen extends StatelessWidget {
                     const SizedBox(height: 12),
                     const Text(
                       'No reports yet',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark),
                     ),
                     const SizedBox(height: 6),
                     const Text(
@@ -122,7 +122,7 @@ class IncidentHistoryScreen extends StatelessWidget {
                           decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
                           child: Text(
                             report.status.toUpperCase(),
-                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: color),
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: color),
                           ),
                         ),
                       ],

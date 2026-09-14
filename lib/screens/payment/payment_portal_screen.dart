@@ -176,7 +176,7 @@ class _PaymentPortalScreenState extends State<PaymentPortalScreen> {
                                       height: 20,
                                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                     )
-                                  : Text('Pay Rs. ${amount.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                  : Text('Pay Rs. ${amount.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                             ),
                             const SizedBox(height: 10),
                             const Row(

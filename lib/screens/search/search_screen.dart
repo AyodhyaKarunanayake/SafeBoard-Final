@@ -83,7 +83,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   color: Colors.white)),
           SizedBox(height: 6),
           Text('Search Route 87 by boarding and alighting stop.',
-              style: TextStyle(fontSize: 12.5, color: Colors.white70)),
+              style: TextStyle(fontSize: 13, color: Colors.white70)),
         ],
       ),
     );
@@ -304,7 +304,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 Text(
                   value ?? placeholder,
                   style: TextStyle(
-                    fontSize: 14.5,
+                    fontSize: 14,
                     fontWeight:
                         isPlaceholder ? FontWeight.w500 : FontWeight.bold,
                     color: isPlaceholder
@@ -356,7 +356,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   children: [
                     Text(label,
                         style: const TextStyle(
-                            fontSize: 9,
+                            fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: AppColors.textMuted,
                             letterSpacing: 0.5)),
@@ -555,7 +555,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           Text(
                             bus.busNumber,
                             style: const TextStyle(
-                              fontSize: 17,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: AppColors.textDark,
                             ),
@@ -655,7 +655,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           Text(
                             bus.crowdingLevel.toUpperCase(),
                             style: TextStyle(
-                              fontSize: 9,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                               color: bus.crowdingLevel == 'low'
                                   ? Colors.green

@@ -139,7 +139,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                             if (bookingProvider.isGroupBooking)
                               Text(
                                 '${bookingProvider.seatCount} × Rs. ${journeyFare.toStringAsFixed(0)}',
-                                style: const TextStyle(fontSize: 9, color: Colors.white70),
+                                style: const TextStyle(fontSize: 10, color: Colors.white70),
                               ),
                           ],
                         ),
@@ -220,7 +220,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                     bookingProvider.isGroupBooking
                         ? 'Confirm & Request ${bookingProvider.seatCount} Seats'
                         : 'Confirm & Request Seat',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const SizedBox(width: 8),
                   const Icon(Icons.arrow_forward, size: 18),

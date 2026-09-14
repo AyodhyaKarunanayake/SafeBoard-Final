@@ -66,7 +66,7 @@ class HelpSupportScreen extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 10),
-                        const Text('1912', style: TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                        const Text('1912', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: 1)),
                         const SizedBox(height: 4),
                         const Text('Toll-free · Available 24 hours', style: TextStyle(color: Colors.white70, fontSize: 12)),
                         const SizedBox(height: 16),
@@ -90,7 +90,7 @@ class HelpSupportScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
-                  const Text('Other ways to reach us', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.primaryNavy)),
+                  const Text('Other ways to reach us', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primaryNavy)),
                   const SizedBox(height: 10),
                   _contactTile(
                     context,
@@ -120,7 +120,7 @@ class HelpSupportScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 28),
 
-                  const Text('Frequently asked', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.primaryNavy)),
+                  const Text('Frequently asked', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primaryNavy)),
                   const SizedBox(height: 10),
                   _faqTile('How does gender-aware seating work?',
                       'SafeBoard allocates Priority Zone seats (rows 1-3, near the front door) first to passengers who\'ve opted in for extra safety, using proximity rules to keep a comfortable distance between passengers.'),
@@ -201,7 +201,7 @@ class HelpSupportScreen extends StatelessWidget {
                   children: [
                     Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textDark)),
                     const SizedBox(height: 2),
-                    Text(subtitle, style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
+                    Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
                   ],
                 ),
               ),
@@ -223,7 +223,7 @@ class HelpSupportScreen extends StatelessWidget {
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: Text(answer, style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted, height: 1.5)),
+            child: Text(answer, style: const TextStyle(fontSize: 13, color: AppColors.textMuted, height: 1.5)),
           ),
         ],
       ),

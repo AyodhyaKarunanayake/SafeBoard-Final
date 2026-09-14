@@ -201,7 +201,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 20),
           const Text(
             'Create your account',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white),
+            style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: Colors.white),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -220,7 +220,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   InputDecoration _fieldDecoration({required String hint, required IconData icon}) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(color: AppColors.textMuted.withOpacity(0.5), fontWeight: FontWeight.normal, fontSize: 13.5),
+      hintStyle: TextStyle(color: AppColors.textMuted.withOpacity(0.5), fontWeight: FontWeight.normal, fontSize: 14),
       prefixIcon: Icon(icon, color: AppColors.textMuted, size: 20),
       filled: true,
       fillColor: Colors.white,

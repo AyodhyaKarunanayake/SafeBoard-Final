@@ -150,7 +150,7 @@ class _RatingScreenState extends State<RatingScreen> {
           ),
           if (journeyLabel.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(journeyLabel, style: const TextStyle(fontSize: 12.5, color: Colors.white70)),
+            Text(journeyLabel, style: const TextStyle(fontSize: 13, color: Colors.white70)),
           ],
           const SizedBox(height: 14),
           ZonePill(zone: zoneKey, small: true),
@@ -206,7 +206,7 @@ class _RatingScreenState extends State<RatingScreen> {
             child: Text(
               _safetyLabel,
               key: ValueKey(_stars),
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: _safetyColor),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _safetyColor),
             ),
           ),
         ],
@@ -233,7 +233,7 @@ class _RatingScreenState extends State<RatingScreen> {
           const SizedBox(height: 4),
           const Text(
             'Select all that apply.',
-            style: TextStyle(fontSize: 11.5, color: AppColors.textMuted),
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
           const SizedBox(height: 14),
           Wrap(
@@ -269,7 +269,7 @@ class _RatingScreenState extends State<RatingScreen> {
                       Text(
                         tag,
                         style: TextStyle(
-                          fontSize: 12.5,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color: isSelected ? Colors.white : AppColors.textDark,
                         ),
@@ -304,7 +304,7 @@ class _RatingScreenState extends State<RatingScreen> {
           const SizedBox(height: 4),
           const Text(
             'Optional - help us improve allocation rules and bus safety.',
-            style: TextStyle(fontSize: 11.5, color: AppColors.textMuted),
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
           const SizedBox(height: 12),
           TextField(

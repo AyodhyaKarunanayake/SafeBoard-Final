@@ -160,7 +160,7 @@ class RouteDetailScreen extends StatelessWidget {
                     child: ElevatedButton.icon(
                       onPressed: () => context.go('/search'),
                       icon: const Icon(Icons.event_seat_rounded, size: 18),
-                      label: const Text('Find My Seat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      label: const Text('Find My Seat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryNavy,
                         minimumSize: const Size(double.infinity, 52),
@@ -178,7 +178,7 @@ class RouteDetailScreen extends StatelessWidget {
     );
   }
 
-  static const _sectionTitleStyle = TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.primaryNavy);
+  static const _sectionTitleStyle = TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryNavy);
 
   Widget _buildHeader(BuildContext context, RouteModel route) {
     return Container(
@@ -229,7 +229,7 @@ class RouteDetailScreen extends StatelessWidget {
             'Sri Lanka\'s northern lifeline. Route 87 threads the west coast through the '
             'Coconut Triangle, the ancient plains of Anuradhapura and the Vanni, all the '
             'way to Jaffna - with every seat allocated by SafeBoard\'s gender-aware engine.',
-            style: TextStyle(fontSize: 12.5, color: Colors.white70, height: 1.5),
+            style: TextStyle(fontSize: 13, color: Colors.white70, height: 1.5),
           ),
         ],
       ),
@@ -261,7 +261,7 @@ class RouteDetailScreen extends StatelessWidget {
         children: [
           Icon(icon, color: AppColors.generalAccent, size: 20),
           const SizedBox(height: 6),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppColors.textDark)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppColors.textDark)),
           Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
         ],
       ),
@@ -349,7 +349,7 @@ class RouteDetailScreen extends StatelessWidget {
         children: [
           Text(region.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primaryNavy)),
           const SizedBox(height: 2),
-          Text(region.blurb, style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted, height: 1.4)),
+          Text(region.blurb, style: const TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.4)),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
@@ -364,7 +364,7 @@ class RouteDetailScreen extends StatelessWidget {
                     children: [
                       Text('${startNumber + i}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.generalAccent)),
                       const SizedBox(width: 6),
-                      Text(stops[i], style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.generalText)),
+                      Text(stops[i], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.generalText)),
                     ],
                   ),
                 ),
@@ -414,11 +414,11 @@ class RouteDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(bus.busNumber, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: AppColors.textDark), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(bus.busNumber, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textDark), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 2),
                   Text(
                     '${bus.departureTimeFormatted} · ${BusSchedule.formatDuration(bus.durationMinutes)} · ${bus.conductorName}',
-                    style: const TextStyle(fontSize: 10.5, color: AppColors.textMuted),
+                    style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -429,13 +429,13 @@ class RouteDetailScreen extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('Rs. ${bus.fareLkr.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12.5, color: AppColors.primaryNavy)),
+                Text('Rs. ${bus.fareLkr.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppColors.primaryNavy)),
                 const SizedBox(height: 2),
                 Row(
                   children: [
                     const Icon(Icons.star_rounded, size: 12, color: AppColors.standingAccent),
                     const SizedBox(width: 2),
-                    Text('${bus.safetyRating}', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: AppColors.textMuted)),
+                    Text('${bus.safetyRating}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textMuted)),
                   ],
                 ),
               ],
