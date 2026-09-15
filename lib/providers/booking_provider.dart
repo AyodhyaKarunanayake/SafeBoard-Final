@@ -3,7 +3,10 @@ import '../models/route_model.dart';
 import '../models/seat_allocation.dart';
 import '../models/passenger.dart';
 import '../models/bus_schedule.dart';
+import '../models/conductor.dart';
+import '../models/bus_template.dart';
 import '../services/allocation_service.dart';
+import '../services/reference_data_service.dart';
 
 // Algorithm-relevant details for an extra passenger in a group booking -
 // deliberately scoped to just what allocateSeat() actually consumes
@@ -34,6 +37,15 @@ class CompanionPreference {
 
 class BookingProvider with ChangeNotifier {
   final AllocationService _allocationService = AllocationService();
+  final ReferenceDataService _referenceData = ReferenceDataService();
+
+  // Reference data hydrated from Firestore's routes/conductors/buses
+  // collections (see ReferenceDataService), used in place of the static
+  // fallback below the moment a real read succeeds. Null until then, so
+  // every getter below keeps working identically offline.
+  List<RouteModel>? _fetchedRoutes;
+  List<Conductor>? _fetchedConductors;
+  List<BusTemplate>? _fetchedBusTemplates;
 
   RouteModel? _selectedRoute;
   BusSchedule? _selectedBus;
@@ -247,6 +259,81 @@ class BookingProvider with ChangeNotifier {
 
   BookingProvider() {
     _selectedRoute = sampleRoutes.first;
+    // Fire-and-forget: seeds routes/conductors/buses from the static
+    // fallback data the first time Firestore is reachable and empty, then
+    // reads them back. Never awaited here, so app startup and every
+    // synchronous getter below behave exactly as before until (if ever)
+    // this resolves and calls notifyListeners().
+    _hydrateReferenceData();
+  }
+
+  Future<void> _hydrateReferenceData() async {
+    try {
+      await _referenceData.seedIfEmpty(
+        routes: sampleRoutes,
+        conductors: sampleConductors,
+        busTemplates: sampleBusTemplates,
+      );
+      final routes = await _referenceData.fetchRoutes();
+      final conductors = await _referenceData.fetchConductors();
+      final templates = await _referenceData.fetchBusTemplates();
+      if (routes != null && routes.isNotEmpty) _fetchedRoutes = routes;
+      if (conductors != null && conductors.isNotEmpty) _fetchedConductors = conductors;
+      if (templates != null && templates.isNotEmpty) _fetchedBusTemplates = templates;
+      if (_fetchedRoutes != null || _fetchedConductors != null || _fetchedBusTemplates != null) {
+        notifyListeners();
+      }
+    } catch (_) {
+      // Graceful offline execution - the static fallback data keeps serving
+      // every getter below.
+    }
+  }
+
+  // The persisted CONDUCTOR entity for every conductor named in the static
+  // timetable below, derived straight from it (never hand-duplicated) so
+  // the seeded name can never drift from what the UI actually shows.
+  List<Conductor> get sampleConductors {
+    final schedules = getAllBusSchedulesForDate(DateTime(2024, 1, 1));
+    final seen = <String>{};
+    final list = <Conductor>[];
+    for (final bus in schedules) {
+      if (seen.add(bus.conductorId)) {
+        list.add(Conductor(
+          conductorId: bus.conductorId,
+          name: bus.conductorName,
+          rating: bus.safetyRating,
+        ));
+      }
+    }
+    return list;
+  }
+
+  // The persisted BUS entity (recurring scheduled trip templates) for
+  // every trip in the static timetable below, likewise derived straight
+  // from it.
+  List<BusTemplate> get sampleBusTemplates {
+    final schedules = getAllBusSchedulesForDate(DateTime(2024, 1, 1));
+    return schedules
+        .map((bus) => BusTemplate(
+              busId: bus.busId,
+              busNumber: bus.busNumber,
+              routeId: bus.routeId,
+              busType: bus.busType,
+              departureHour: bus.departureDateTime.hour,
+              departureMinute: bus.departureDateTime.minute,
+              durationMinutes: bus.durationMinutes,
+              startPoint: bus.startPoint,
+              endPoint: bus.endPoint,
+              availablePrioritySeats: bus.availablePrioritySeats,
+              availableGeneralSeats: bus.availableGeneralSeats,
+              availableLimitedSeats: bus.availableLimitedSeats,
+              availableStanding: bus.availableStanding,
+              crowdingLevel: bus.crowdingLevel,
+              fareLkr: bus.fareLkr,
+              conductorId: bus.conductorId,
+              safetyRating: bus.safetyRating,
+            ))
+        .toList();
   }
 
   List<String> get allUniqueStops {
@@ -385,6 +472,11 @@ class BookingProvider with ChangeNotifier {
   // departures. Every bus on both sides physically passes through all 14
   // stops, so filtering/ranking by intermediate stop works symmetrically.
   List<BusSchedule> getAllBusSchedulesForDate(DateTime date) {
+    final templates = _fetchedBusTemplates;
+    if (templates != null && templates.isNotEmpty) {
+      return _schedulesFromTemplates(templates, date);
+    }
+
     final y = date.year;
     final m = date.month;
     final d = date.day;
@@ -436,6 +528,47 @@ class BookingProvider with ChangeNotifier {
     return [...forward, ...reverse];
   }
 
+  // Rebuilds today's bookable BusSchedule list from persisted BusTemplate
+  // (BUS entity) rows once a real Firestore read has succeeded - the
+  // template/date split mirrors how JourneyInstance already relates to a
+  // recurring schedule. Falls back per-bus to the static route if a
+  // template's routeId isn't among the fetched routes.
+  List<BusSchedule> _schedulesFromTemplates(List<BusTemplate> templates, DateTime date) {
+    final routes = (_fetchedRoutes != null && _fetchedRoutes!.isNotEmpty) ? _fetchedRoutes! : sampleRoutes;
+    final conductors = _fetchedConductors ?? const <Conductor>[];
+    final conductorNames = {for (final c in conductors) c.conductorId: c.name};
+
+    return templates.map((t) {
+      final route = routes.firstWhere(
+        (r) => r.routeId == t.routeId,
+        orElse: () => routes.first,
+      );
+      final departure = DateTime(date.year, date.month, date.day, t.departureHour, t.departureMinute);
+      return BusSchedule(
+        busId: t.busId,
+        busNumber: t.busNumber,
+        routeId: t.routeId,
+        routeName: route.routeName,
+        busType: t.busType,
+        departureDateTime: departure,
+        arrivalDateTime: departure.add(Duration(minutes: t.durationMinutes)),
+        startPoint: t.startPoint,
+        endPoint: t.endPoint,
+        stops: route.stops,
+        availablePrioritySeats: t.availablePrioritySeats,
+        availableGeneralSeats: t.availableGeneralSeats,
+        availableLimitedSeats: t.availableLimitedSeats,
+        availableStanding: t.availableStanding,
+        crowdingLevel: t.crowdingLevel,
+        fareLkr: t.fareLkr,
+        durationMinutes: t.durationMinutes,
+        conductorName: conductorNames[t.conductorId] ?? 'K. Perera',
+        conductorId: t.conductorId,
+        safetyRating: t.safetyRating,
+      );
+    }).toList();
+  }
+
   BusSchedule _trip(
     RouteModel route,
     String busId,
@@ -473,6 +606,10 @@ class BookingProvider with ChangeNotifier {
       fareLkr: fareLkr,
       durationMinutes: durationMinutes,
       conductorName: conductorName,
+      // Deterministic id for the CONDUCTOR entity, derived from busId (this
+      // static dataset has exactly one conductor per scheduled trip) so it
+      // never needs hand-maintaining alongside conductorName above.
+      conductorId: 'CND_${busId.replaceFirst('BUS_', '')}',
       safetyRating: safetyRating,
     );
   }

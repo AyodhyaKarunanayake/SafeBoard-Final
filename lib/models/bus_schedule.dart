@@ -28,6 +28,11 @@ class BusSchedule {
   final double fareLkr;
   final int durationMinutes;
   final String conductorName;
+  // Foreign key into the persisted `conductors` collection (see
+  // Conductor/ReferenceDataService). Derived deterministically from busId
+  // when a schedule is generated locally, or read back verbatim when a
+  // schedule is rebuilt from a fetched BusTemplate.
+  final String conductorId;
   final double safetyRating; // e.g. 4.8
 
   BusSchedule({
@@ -53,6 +58,7 @@ class BusSchedule {
     required this.fareLkr,
     required this.durationMinutes,
     this.conductorName = 'K. Perera',
+    this.conductorId = 'CND_UNKNOWN',
     this.safetyRating = 4.8,
   });
 
