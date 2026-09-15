@@ -1,7 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/incident_report.dart';
+import 'analytics_service.dart';
 
 class IncidentService {
+  final AnalyticsService _analytics = AnalyticsService();
+
   FirebaseFirestore? get _firestore {
     try {
       return FirebaseFirestore.instance;
@@ -22,6 +25,13 @@ class IncidentService {
     } catch (e) {
       // Graceful offline execution
     }
+
+    _analytics.logEvent(
+      eventType: 'incident_reported',
+      journeyId: report.journeyId,
+      incidentType: report.incidentType,
+      severityLevel: report.severityLevel,
+    );
   }
 
   // Used by "My reports" - a passenger reviewing their own past incident

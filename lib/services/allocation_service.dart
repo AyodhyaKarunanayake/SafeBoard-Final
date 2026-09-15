@@ -2,6 +2,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/passenger.dart';
 import '../models/seat_allocation.dart';
+import 'analytics_service.dart';
 
 // Thrown when a bus's 64 seats AND its 6 standing spots are all taken.
 class SeatAllocationException implements Exception {
@@ -169,6 +170,7 @@ class AllocationService {
   static const double _proximityWeight = 0.5;
 
   final Map<String, _BusSeatMap> _seatMaps = {};
+  final AnalyticsService _analytics = AnalyticsService();
   int _idCounter = 0;
 
   FirebaseFunctions? get _functions {
@@ -476,8 +478,31 @@ class AllocationService {
       availableLimitedSeats: availableLimitedSeats,
       availableStanding: availableStanding,
     );
-    final result = _allocateOne(map, passenger, excludeSeats);
+
+    final _AllocResult result;
+    try {
+      result = _allocateOne(map, passenger, excludeSeats);
+    } on SeatAllocationException {
+      _analytics.logEvent(
+        eventType: 'allocation_rejected',
+        journeyId: journeyId,
+        busId: busId,
+        routeId: routeId,
+        gender: passenger.gender,
+      );
+      rethrow;
+    }
     _commit(map, result, passenger);
+    _analytics.logEvent(
+      eventType: 'seat_allocated',
+      journeyId: journeyId,
+      busId: busId,
+      routeId: routeId,
+      zone: result.zone,
+      gender: passenger.gender,
+      riskScore: result.riskScore,
+      priorityReserved: result.priorityReserved,
+    );
     return _buildAllocation(result, busId, journeyId, boardingStop, alightingStop);
   }
 
@@ -528,6 +553,17 @@ class AllocationService {
       }
     }
 
+    _analytics.logEvent(
+      eventType: 'group_booking_outcome',
+      journeyId: journeyId,
+      busId: busId,
+      routeId: routeId,
+      zone: blockZone,
+      seatCount: passengers.length,
+      seatingMode: block != null ? 'adjacent' : 'individual_fallback',
+      travelingTogether: travelingTogetherAll,
+    );
+
     final byPassenger = <Passenger, SeatAllocation>{};
 
     if (block != null && blockZone != null) {
@@ -538,6 +574,16 @@ class AllocationService {
         final riskScore = blockZone == 'priority'
             ? 0.05
             : (blockZone == 'general' ? 0.1 : 0.2) + _costFor(map, seat, p.gender);
+        _analytics.logEvent(
+          eventType: 'seat_allocated',
+          journeyId: journeyId,
+          busId: busId,
+          routeId: routeId,
+          zone: blockZone,
+          gender: p.gender,
+          riskScore: riskScore,
+          priorityReserved: false,
+        );
         byPassenger[p] = _buildAllocation(
           _AllocResult(seat, blockZone, riskScore),
           busId,
@@ -551,8 +597,30 @@ class AllocationService {
       // the normal individual allocation logic for each passenger, still
       // sharing one seat map so nobody collides.
       for (final p in ordered) {
-        final result = _allocateOne(map, p, const {});
+        final _AllocResult result;
+        try {
+          result = _allocateOne(map, p, const {});
+        } on SeatAllocationException {
+          _analytics.logEvent(
+            eventType: 'allocation_rejected',
+            journeyId: journeyId,
+            busId: busId,
+            routeId: routeId,
+            gender: p.gender,
+          );
+          rethrow;
+        }
         _commit(map, result, p);
+        _analytics.logEvent(
+          eventType: 'seat_allocated',
+          journeyId: journeyId,
+          busId: busId,
+          routeId: routeId,
+          zone: result.zone,
+          gender: p.gender,
+          riskScore: result.riskScore,
+          priorityReserved: result.priorityReserved,
+        );
         byPassenger[p] = _buildAllocation(result, busId, journeyId, boardingStop, alightingStop);
       }
     }

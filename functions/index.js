@@ -371,6 +371,23 @@ exports.allocateSeat = functions.https.onRequest(async (req, res) => {
       }
     }
 
+    // ANALYTICS_LOG - best-effort, fire-and-forget (never awaited, never
+    // throws into the allocation flow), exactly like the seat_allocations
+    // write below. Written for evaluation/analysis, not read back by the
+    // app itself.
+    let analyticsCounter = 0;
+    function logAnalyticsEvent(data) {
+      const logId = `log_${Date.now()}_${analyticsCounter++}`;
+      db.collection("analytics_log").doc(logId).set({
+        log_id: logId,
+        timestamp: new Date().toISOString(),
+        journey_id: journey_id,
+        bus_id: bus_id,
+        route_id: route_id,
+        ...data,
+      }).catch(() => {});
+    }
+
     // ── Run the group (or single-passenger) allocation ──────────────────
     const allEligible = passengers.every(isPriorityEligible);
     const zoneOrder = allEligible ? ["priority", "general", "limited"] : ["general", "limited"];
@@ -392,6 +409,13 @@ exports.allocateSeat = functions.https.onRequest(async (req, res) => {
           break;
         }
       }
+      logAnalyticsEvent({
+        event_type: "group_booking_outcome",
+        zone: blockZone,
+        seat_count: passengers.length,
+        seating_mode: block ? "adjacent" : "individual_fallback",
+        traveling_together: travelingTogetherAll,
+      });
     }
 
     const allocationsByPassenger = new Map();
@@ -402,15 +426,30 @@ exports.allocateSeat = functions.https.onRequest(async (req, res) => {
         occupiedGenderBySeat[seat] = p.gender;
         const riskScore = blockZone === "priority" ? 0.05 : (blockZone === "general" ? 0.1 : 0.2) + costFor(seat, p.gender);
         allocationsByPassenger.set(p, { seatNumber: seat, zone: blockZone, riskScore, priorityReserved: false });
+        logAnalyticsEvent({
+          event_type: "seat_allocated",
+          zone: blockZone,
+          gender: p.gender,
+          risk_score: riskScore,
+          priority_reserved: false,
+        });
       }
     } else {
       for (const p of ordered) {
         const result = allocateOne(p, new Set());
         if (!result) {
+          logAnalyticsEvent({ event_type: "allocation_rejected", gender: p.gender });
           return res.status(400).json({ error: "Bus at capacity - no seats or standing room left." });
         }
         commit(result, p);
         allocationsByPassenger.set(p, result);
+        logAnalyticsEvent({
+          event_type: "seat_allocated",
+          zone: result.zone,
+          gender: p.gender,
+          risk_score: result.riskScore,
+          priority_reserved: result.priorityReserved === true,
+        });
       }
     }
 
