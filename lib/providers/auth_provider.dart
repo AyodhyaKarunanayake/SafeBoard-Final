@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/passenger.dart';
-import '../services/auth_service.dart';
+import '../services/auth_service.dart' show AuthService, AuthException;
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -15,18 +15,26 @@ class AuthProvider with ChangeNotifier {
     _passenger = _authService.mockUser;
   }
 
-  Future<void> signIn(String email, String password) async {
+  // Returns null on success, or a friendly error message to show the
+  // passenger (e.g. wrong password) - signing in never silently succeeds
+  // with mismatched real credentials.
+  Future<String?> signIn(String email, String password) async {
     _isLoading = true;
     notifyListeners();
     try {
       _passenger = await _authService.signInWithEmailAndPassword(email, password);
+      return null;
+    } on AuthException catch (e) {
+      return e.message;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> register({
+  // Returns null on success, or a friendly error message to show the
+  // passenger (e.g. email already registered).
+  Future<String?> register({
     required String name,
     required String email,
     required String password,
@@ -41,6 +49,9 @@ class AuthProvider with ChangeNotifier {
         password: password,
         gender: gender,
       );
+      return null;
+    } on AuthException catch (e) {
+      return e.message;
     } finally {
       _isLoading = false;
       notifyListeners();

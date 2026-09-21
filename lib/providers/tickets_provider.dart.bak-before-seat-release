@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/ticket.dart';
-import '../services/seat_release_service.dart';
 
 class TicketsProvider with ChangeNotifier {
   final List<Ticket> _tickets = [];
@@ -64,12 +63,6 @@ class TicketsProvider with ChangeNotifier {
     final index = _tickets.indexWhere((t) => t.ticketId == ticketId);
     if (index == -1) return;
     _tickets[index] = _tickets[index].copyWith(journeyStarted: false, journeyCompleted: true);
-    // Let the conductor app know the seat(s) are free again (fire-and-forget).
-    // A bulk ticket ends for the whole group, so every seat on it is released.
-    final releaseService = SeatReleaseService();
-    for (final allocation in _tickets[index].allAllocations) {
-      releaseService.release(allocation.allocationId);
-    }
     notifyListeners();
   }
 

@@ -182,25 +182,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.backgroundLight,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _seatCountChip('Priority', bus.availablePrioritySeats, AppColors.priorityAccent),
-                  _seatCountChip('General', bus.availableGeneralSeats, AppColors.generalAccent),
-                  _seatCountChip('Limited', bus.availableLimitedSeats, AppColors.limitedAccent),
-                  _seatCountChip('Standing', bus.availableStanding, AppColors.standingAccent),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             _buildGroupBookingSection(context, bookingProvider),
             const SizedBox(height: 28),
@@ -442,16 +424,6 @@ class BookingConfirmationScreen extends StatelessWidget {
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textDark),
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _seatCountChip(String label, int count, Color color) {
-    return Column(
-      children: [
-        Text('$count', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: color)),
-        const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
       ],
     );
   }

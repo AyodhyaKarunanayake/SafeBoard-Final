@@ -3,6 +3,17 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/passenger.dart';
 
+// Thrown when Firebase Auth actively rejected a sign-in/sign-up attempt
+// (wrong password, unknown account, email already registered, weak
+// password, ...) - as opposed to Firebase simply being unreachable, which
+// still falls back to the offline/demo path below.
+class AuthException implements Exception {
+  final String message;
+  const AuthException(this.message);
+  @override
+  String toString() => message;
+}
+
 class AuthService {
   fb.FirebaseAuth? get _auth {
     try {
@@ -51,6 +62,7 @@ class AuthService {
           _mockCurrentPassenger = Passenger.fromMap(doc.data()!, doc.id);
           return _mockCurrentPassenger;
         }
+        return null;
       }
     } catch (e) {
       // Fallback for offline execution
@@ -58,57 +70,76 @@ class AuthService {
     return _mockCurrentPassenger;
   }
 
+  // Throws AuthException (with a friendly message) when Firebase Auth is
+  // reachable and actively rejects the credentials - wrong password,
+  // unknown account, etc. Only falls back to the offline/demo passenger
+  // when Firebase itself is unreachable (auth == null, or a genuine
+  // network failure), so a bad password can never silently "succeed".
   Future<Passenger> signInWithEmailAndPassword(String email, String password) async {
+    final auth = _auth;
+    if (auth == null) return _offlineSignIn(email);
+
     try {
-      final auth = _auth;
-      if (auth != null) {
-        final cred = await auth.signInWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
-        if (cred.user != null) {
-          final profile = await getPassengerProfile(cred.user!.uid);
-          if (profile != null) return profile;
+      final cred = await auth.signInWithEmailAndPassword(email: email, password: password);
+      final user = cred.user;
+      if (user == null) throw const AuthException('Could not sign in. Please try again.');
+
+      final profile = await getPassengerProfile(user.uid);
+      if (profile != null) return profile;
+
+      // Credentials were valid but no Firestore profile doc exists yet
+      // (e.g. it failed to write during an offline sign-up) - build one
+      // now rather than treating a correctly-authenticated user as an
+      // error.
+      final freshProfile = Passenger(
+        passengerId: user.uid,
+        name: user.email?.split('@').first ?? 'Passenger',
+        email: user.email ?? email,
+        gender: 'prefer_not_to_say',
+        ageGroup: 'adult',
+        mobilityStatus: 'none',
+        phoneNumber: '',
+        safetyPreference: false,
+        createdDate: DateTime.now(),
+        updatedDate: DateTime.now(),
+      );
+      try {
+        final firestore = _firestore;
+        if (firestore != null) {
+          await firestore.collection('passengers').doc(user.uid).set(freshProfile.toMap());
         }
-      }
-    } catch (e) {
-      // Fallback for demo mode
+      } catch (_) {}
+      _mockCurrentPassenger = freshProfile;
+      return freshProfile;
+    } on fb.FirebaseAuthException catch (e) {
+      if (e.code == 'network-request-failed') return _offlineSignIn(email);
+      throw AuthException(_friendlyAuthError(e));
     }
-    _mockCurrentPassenger = Passenger(
-      passengerId: 'p_28745',
-      name: email.contains('@') ? email.split('@').first : 'Passenger',
-      email: email,
-      gender: 'female',
-      ageGroup: 'adult',
-      mobilityStatus: 'none',
-      phoneNumber: '+94 77 987 6543',
-      safetyPreference: true,
-      createdDate: DateTime.now(),
-      updatedDate: DateTime.now(),
-    );
-    return _mockCurrentPassenger!;
   }
 
+  // Throws AuthException when Firebase Auth is reachable and rejects the
+  // sign-up (email already registered, weak password, invalid email, ...).
+  // Only falls back to the offline/demo passenger when Firebase itself is
+  // unreachable.
   Future<Passenger> registerUser({
     required String name,
     required String email,
     required String password,
     required String gender,
   }) async {
-    String uid = 'p_${DateTime.now().millisecondsSinceEpoch}';
+    final auth = _auth;
+    if (auth == null) return _offlineRegister(name: name, email: email, gender: gender);
+
+    String uid;
     try {
-      final auth = _auth;
-      if (auth != null) {
-        final cred = await auth.createUserWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
-        if (cred.user != null) {
-          uid = cred.user!.uid;
-        }
+      final cred = await auth.createUserWithEmailAndPassword(email: email, password: password);
+      uid = cred.user?.uid ?? '';
+      if (uid.isEmpty) throw const AuthException('Could not create your account. Please try again.');
+    } on fb.FirebaseAuthException catch (e) {
+      if (e.code == 'network-request-failed') {
+        return _offlineRegister(name: name, email: email, gender: gender);
       }
-    } catch (e) {
-      // Offline fallback
+      throw AuthException(_friendlyAuthError(e));
     }
 
     final newPassenger = Passenger(
@@ -130,11 +161,67 @@ class AuthService {
         await firestore.collection('passengers').doc(uid).set(newPassenger.toMap());
       }
     } catch (e) {
-      // Offline fallback
+      // Graceful offline execution - the account is real either way; the
+      // Firestore profile doc will simply be missing until next sync.
     }
 
     _mockCurrentPassenger = newPassenger;
     return newPassenger;
+  }
+
+  Passenger _offlineSignIn(String email) {
+    _mockCurrentPassenger = Passenger(
+      passengerId: 'p_28745',
+      name: email.contains('@') ? email.split('@').first : 'Passenger',
+      email: email,
+      gender: 'female',
+      ageGroup: 'adult',
+      mobilityStatus: 'none',
+      phoneNumber: '+94 77 987 6543',
+      safetyPreference: true,
+      createdDate: DateTime.now(),
+      updatedDate: DateTime.now(),
+    );
+    return _mockCurrentPassenger!;
+  }
+
+  Passenger _offlineRegister({required String name, required String email, required String gender}) {
+    final newPassenger = Passenger(
+      passengerId: 'p_${DateTime.now().millisecondsSinceEpoch}',
+      name: name,
+      email: email,
+      gender: gender,
+      ageGroup: 'adult',
+      mobilityStatus: 'none',
+      phoneNumber: '+94 77 123 4567',
+      safetyPreference: true,
+      createdDate: DateTime.now(),
+      updatedDate: DateTime.now(),
+    );
+    _mockCurrentPassenger = newPassenger;
+    return newPassenger;
+  }
+
+  String _friendlyAuthError(fb.FirebaseAuthException e) {
+    switch (e.code) {
+      case 'email-already-in-use':
+        return 'An account already exists for that email address.';
+      case 'invalid-email':
+        return 'That email address looks invalid.';
+      case 'weak-password':
+        return 'Password is too weak - use at least 6 characters.';
+      case 'user-not-found':
+        return 'No account found for that email address.';
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'Incorrect email or password.';
+      case 'user-disabled':
+        return 'This account has been disabled.';
+      case 'too-many-requests':
+        return 'Too many attempts. Please wait a moment and try again.';
+      default:
+        return e.message ?? 'Something went wrong. Please try again.';
+    }
   }
 
   Future<void> updatePreferences({

@@ -35,6 +35,21 @@ class CompanionPreference {
   }
 }
 
+// Nobody is shown standing while any seat (Priority/General/Limited) is
+// still free - standing only starts filling in once all 64 seats are
+// taken. [rawAvailableStanding] only takes effect once that happens, so a
+// bus with plenty of free seats always displays/seeds a full 6 standing
+// spots, never a partially-occupied one.
+int _effectiveAvailableStanding({
+  required int availablePrioritySeats,
+  required int availableGeneralSeats,
+  required int availableLimitedSeats,
+  required int rawAvailableStanding,
+}) {
+  final anySeatFree = availablePrioritySeats > 0 || availableGeneralSeats > 0 || availableLimitedSeats > 0;
+  return anySeatFree ? kStandingCapacity : rawAvailableStanding.clamp(0, kStandingCapacity);
+}
+
 class BookingProvider with ChangeNotifier {
   final AllocationService _allocationService = AllocationService();
   final ReferenceDataService _referenceData = ReferenceDataService();
@@ -558,7 +573,12 @@ class BookingProvider with ChangeNotifier {
         availablePrioritySeats: t.availablePrioritySeats,
         availableGeneralSeats: t.availableGeneralSeats,
         availableLimitedSeats: t.availableLimitedSeats,
-        availableStanding: t.availableStanding,
+        availableStanding: _effectiveAvailableStanding(
+          availablePrioritySeats: t.availablePrioritySeats,
+          availableGeneralSeats: t.availableGeneralSeats,
+          availableLimitedSeats: t.availableLimitedSeats,
+          rawAvailableStanding: t.availableStanding,
+        ),
         crowdingLevel: t.crowdingLevel,
         fareLkr: t.fareLkr,
         durationMinutes: t.durationMinutes,
@@ -601,7 +621,12 @@ class BookingProvider with ChangeNotifier {
       availablePrioritySeats: availablePrioritySeats,
       availableGeneralSeats: availableGeneralSeats,
       availableLimitedSeats: availableLimitedSeats,
-      availableStanding: availableStanding,
+      availableStanding: _effectiveAvailableStanding(
+        availablePrioritySeats: availablePrioritySeats,
+        availableGeneralSeats: availableGeneralSeats,
+        availableLimitedSeats: availableLimitedSeats,
+        rawAvailableStanding: availableStanding,
+      ),
       crowdingLevel: crowdingLevel,
       fareLkr: fareLkr,
       durationMinutes: durationMinutes,

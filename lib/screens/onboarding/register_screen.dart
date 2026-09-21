@@ -16,6 +16,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _nameFocus = FocusNode();
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
 
   String _selectedGender = 'female';
 
@@ -26,11 +29,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _nameFocus.addListener(_onFocusChange);
+    _emailFocus.addListener(_onFocusChange);
+    _passwordFocus.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() => setState(() {});
+
+  @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _nameFocus.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.emergencyRed,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message, style: const TextStyle(color: Colors.white))),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -45,39 +79,44 @@ class _RegisterScreenState extends State<RegisterScreen> {
           children: [
             _buildHeader(context),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
+              padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _fieldLabel('Full Name'),
-                  const SizedBox(height: 8),
-                  TextField(
+                  _buildField(
+                    label: 'Full name',
                     controller: _nameController,
+                    focusNode: _nameFocus,
+                    icon: Icons.person_outline,
                     textCapitalization: TextCapitalization.words,
-                    decoration: _fieldDecoration(hint: 'e.g. W.A. Kasun Perera', icon: Icons.person_outline),
-                  ),
-                  const SizedBox(height: 18),
-
-                  _fieldLabel('Email Address'),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: _fieldDecoration(hint: 'e.g. user@domain.lk', icon: Icons.email_outlined),
-                  ),
-                  const SizedBox(height: 18),
-
-                  _fieldLabel('Password'),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    decoration: _fieldDecoration(hint: 'Minimum 6 characters', icon: Icons.lock_outline),
                   ),
                   const SizedBox(height: 22),
 
-                  _fieldLabel('Gender'),
-                  const SizedBox(height: 10),
+                  _buildField(
+                    label: 'Email address',
+                    controller: _emailController,
+                    focusNode: _emailFocus,
+                    icon: Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height: 22),
+
+                  _buildField(
+                    label: 'Password',
+                    controller: _passwordController,
+                    focusNode: _passwordFocus,
+                    icon: Icons.lock_outline,
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 26),
+
+                  const Padding(
+                    padding: EdgeInsets.only(left: 2, bottom: 10),
+                    child: Text(
+                      'Gender',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textMuted, letterSpacing: 0.3),
+                    ),
+                  ),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -88,14 +127,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         selected: isSelected,
                         showCheckmark: false,
                         selectedColor: AppColors.primaryNavy,
-                        backgroundColor: Colors.white,
-                        side: BorderSide(color: isSelected ? AppColors.primaryNavy : AppColors.borderLight),
+                        backgroundColor: const Color(0xFFF1F4FA),
+                        elevation: 0,
+                        pressElevation: 0,
+                        shadowColor: Colors.transparent,
+                        side: BorderSide(color: isSelected ? AppColors.primaryNavy : Colors.transparent),
                         labelStyle: TextStyle(
                           color: isSelected ? Colors.white : AppColors.textDark,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                           fontSize: 13,
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                         onSelected: (selected) {
                           if (selected) {
                             setState(() {
@@ -106,7 +149,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
 
                   Container(
                     padding: const EdgeInsets.all(14),
@@ -135,22 +178,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     isLoading: authProvider.isLoading,
                     onPressed: () async {
                       if (_nameController.text.trim().isEmpty || _emailController.text.trim().isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Please fill in all required fields.')),
-                        );
+                        _showError('Please fill in all required fields.');
                         return;
                       }
 
-                      await authProvider.register(
+                      if (_passwordController.text.trim().length < 6) {
+                        _showError('Password must be at least 6 characters.');
+                        return;
+                      }
+
+                      final error = await authProvider.register(
                         name: _nameController.text.trim(),
                         email: _emailController.text.trim(),
                         password: _passwordController.text.trim(),
                         gender: _selectedGender,
                       );
-
-                      if (context.mounted) {
-                        context.go('/preferences');
+                      if (!context.mounted) return;
+                      if (error != null) {
+                        _showError(error);
+                        return;
                       }
+                      context.go('/preferences');
                     },
                   ),
                   const SizedBox(height: 20),
@@ -213,21 +261,63 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _fieldLabel(String text) {
-    return Text(text, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textDark));
-  }
-
-  InputDecoration _fieldDecoration({required String hint, required IconData icon}) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: TextStyle(color: AppColors.textMuted.withOpacity(0.5), fontWeight: FontWeight.normal, fontSize: 14),
-      prefixIcon: Icon(icon, color: AppColors.textMuted, size: 20),
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.borderLight)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.borderLight)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.primaryNavy, width: 1.5)),
+  // A labeled credential field: a small muted label above a rounded input
+  // that lifts with a soft navy shadow and a solid border while focused.
+  // No placeholder/example text is ever shown - the label above the box is
+  // the only description of what belongs in it.
+  Widget _buildField({
+    required String label,
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required IconData icon,
+    TextInputType? keyboardType,
+    TextCapitalization textCapitalization = TextCapitalization.none,
+    bool obscureText = false,
+    Widget? suffixIcon,
+  }) {
+    final isFocused = focusNode.hasFocus;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 2, bottom: 8),
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textMuted, letterSpacing: 0.3),
+          ),
+        ),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: isFocused
+                ? [BoxShadow(color: AppColors.primaryNavy.withOpacity(0.12), blurRadius: 18, offset: const Offset(0, 6))]
+                : const [],
+          ),
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            keyboardType: keyboardType,
+            textCapitalization: textCapitalization,
+            obscureText: obscureText,
+            style: const TextStyle(fontSize: 15, color: AppColors.textDark, fontWeight: FontWeight.w500),
+            decoration: InputDecoration(
+              prefixIcon: Icon(icon, color: isFocused ? AppColors.primaryNavy : AppColors.textMuted, size: 20),
+              suffixIcon: suffixIcon,
+              filled: true,
+              fillColor: isFocused ? Colors.white : const Color(0xFFF1F4FA),
+              contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: AppColors.primaryNavy, width: 1.6),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

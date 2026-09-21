@@ -12,7 +12,6 @@ import '../../models/ticket.dart';
 import '../../models/bus_schedule.dart';
 import '../../models/route_model.dart';
 import '../../models/seat_allocation.dart';
-import '../../services/conductor_message_service.dart';
 import '../../constants/colors.dart';
 import '../../utils/seat_zone.dart';
 import '../../widgets/zone_pill.dart';
@@ -21,65 +20,6 @@ import '../../widgets/bus_diagram.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/qr_code_widget.dart';
 import '../../widgets/tonal_button.dart';
-
-// Invisible: watches this passenger's "Text the conductor" messages and shows a
-// snackbar whenever the conductor replies while the Journey screen is open. It
-// only reads, never blocks the screen, and does nothing when offline.
-class _ConductorReplyWatcher extends StatefulWidget {
-  final String passengerId;
-  final String journeyId;
-
-  const _ConductorReplyWatcher({required this.passengerId, required this.journeyId});
-
-  @override
-  State<_ConductorReplyWatcher> createState() => _ConductorReplyWatcherState();
-}
-
-class _ConductorReplyWatcherState extends State<_ConductorReplyWatcher> {
-  StreamSubscription<List<ConductorMessageRecord>>? _subscription;
-  final Map<String, int> _knownReplyCounts = {};
-  bool _primed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _subscription = ConductorMessageService()
-        .watchMyMessages(passengerId: widget.passengerId, journeyId: widget.journeyId)
-        .listen(_onMessages, onError: (_) {});
-  }
-
-  void _onMessages(List<ConductorMessageRecord> messages) {
-    // The first snapshot only records what is already there.
-    if (!_primed) {
-      for (final m in messages) {
-        _knownReplyCounts[m.id] = m.replies.length;
-      }
-      _primed = true;
-      return;
-    }
-    for (final m in messages) {
-      final before = _knownReplyCounts[m.id] ?? 0;
-      if (m.replies.length > before && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Conductor replied: "${m.replies.last.text}"'),
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
-      _knownReplyCounts[m.id] = m.replies.length;
-    }
-  }
-
-  @override
-  void dispose() {
-    _subscription?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => const SizedBox.shrink();
-}
 
 // Seat -> zone label, mirroring the same row rule used at allocation time
 // (rows 1-3 priority, 4-6 general, 7-12 limited; see lib/utils/seat_zone.dart).
@@ -294,23 +234,17 @@ class _JourneyScreenState extends State<JourneyScreen> with SingleTickerProvider
     );
   }
 
-  void _showConductorMessageSheet(BuildContext context, SeatAllocation alloc) {
+  void _showConductorMessageSheet(BuildContext context) {
     const presets = [
       'Can I get a seat change?',
       'How many stops to my destination?',
       'The bus feels overcrowded right now',
       'Thank you, all good',
     ];
-    final passengerId = Provider.of<AuthProvider>(context, listen: false).passenger?.passengerId ?? 'p_28745';
-    final messageService = ConductorMessageService();
-    // Created once so the conversation below doesn't resubscribe on rebuilds.
-    final myMessages = messageService.watchMyMessages(passengerId: passengerId, journeyId: alloc.journeyId);
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (sheetContext) => SingleChildScrollView(
-        child: Padding(
+      builder: (sheetContext) => Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -331,14 +265,6 @@ class _JourneyScreenState extends State<JourneyScreen> with SingleTickerProvider
                     borderRadius: BorderRadius.circular(14),
                     onTap: () {
                       Navigator.pop(sheetContext);
-                      // Delivers the message to the conductor app (fire-and-forget).
-                      messageService.send(
-                        journeyId: alloc.journeyId,
-                        busId: alloc.busId,
-                        passengerId: passengerId,
-                        seatNumber: alloc.seatNumber,
-                        text: preset,
-                      );
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Sent to conductor: "$preset"'), duration: const Duration(seconds: 2)),
                       );
@@ -355,62 +281,8 @@ class _JourneyScreenState extends State<JourneyScreen> with SingleTickerProvider
                   ),
                 ),
               ),
-            // The conversation so far, including the conductor's replies (live).
-            StreamBuilder<List<ConductorMessageRecord>>(
-              stream: myMessages,
-              builder: (context, snapshot) {
-                final messages = snapshot.data ?? const <ConductorMessageRecord>[];
-                if (messages.isEmpty) return const SizedBox.shrink();
-                final recent = messages.length > 4 ? messages.sublist(messages.length - 4) : messages;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 6),
-                    const Text('Your messages',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textMuted)),
-                    const SizedBox(height: 8),
-                    for (final m in recent) ...[
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 6, left: 40),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryNavy,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Text(m.text, style: const TextStyle(color: Colors.white, fontSize: 12)),
-                        ),
-                      ),
-                      for (final reply in m.replies)
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 6, right: 40),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: AppColors.backgroundLight,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: AppColors.borderLight),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Conductor',
-                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textMuted)),
-                                Text(reply.text, style: const TextStyle(color: AppColors.textDark, fontSize: 12)),
-                              ],
-                            ),
-                          ),
-                        ),
-                    ],
-                  ],
-                );
-              },
-            ),
           ],
         ),
-      ),
       ),
     );
   }
@@ -1006,7 +878,7 @@ class _JourneyScreenState extends State<JourneyScreen> with SingleTickerProvider
             icon: Icons.chat_bubble_outline,
             label: 'Text Conductor',
             color: AppColors.generalAccent,
-            onPressed: () => _showConductorMessageSheet(context, ticket.allocation),
+            onPressed: () => _showConductorMessageSheet(context),
           ),
         ),
         const SizedBox(width: 10),
