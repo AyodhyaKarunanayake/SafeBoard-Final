@@ -8,6 +8,7 @@ import '../../constants/colors.dart';
 import '../../widgets/zone_pill.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
 import '../../widgets/stop_picker_sheet.dart';
+import '../../services/live_occupancy_service.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -691,53 +692,67 @@ class _SearchScreenState extends State<SearchScreen> {
                 const SizedBox(height: 14),
 
                 // Seat Availability Mini Bars - a 2x2 grid (4 zones no
-                // longer fit comfortably in one row).
-                Column(
-                  children: [
-                    Row(
+                // longer fit comfortably in one row). Live counts come from
+                // real active seat_allocations docs via LiveOccupancyService;
+                // until that stream has data (or if it errors), this falls
+                // back to the bus's static counters exactly as before, so
+                // the card never looks broken or blank.
+                StreamBuilder<Map<String, int>>(
+                  stream: LiveOccupancyService().availableSeatsFor(bus.busId),
+                  builder: (context, snapshot) {
+                    final live = snapshot.data;
+                    final priorityAvail = live?['priority'] ?? bus.availablePrioritySeats;
+                    final generalAvail = live?['general'] ?? bus.availableGeneralSeats;
+                    final limitedAvail = live?['limited'] ?? bus.availableLimitedSeats;
+                    final standingAvail = live?['standing'] ?? bus.availableStanding;
+                    return Column(
                       children: [
-                        Expanded(
-                          child: _buildSeatAvailabilityItem(
-                            label: 'Priority Zone',
-                            avail: bus.availablePrioritySeats,
-                            total: bus.totalPrioritySeats,
-                            color: AppColors.priorityAccent,
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildSeatAvailabilityItem(
+                                label: 'Priority Zone',
+                                avail: priorityAvail,
+                                total: bus.totalPrioritySeats,
+                                color: AppColors.priorityAccent,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildSeatAvailabilityItem(
+                                label: 'General Zone',
+                                avail: generalAvail,
+                                total: bus.totalGeneralSeats,
+                                color: AppColors.generalAccent,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildSeatAvailabilityItem(
-                            label: 'General Zone',
-                            avail: bus.availableGeneralSeats,
-                            total: bus.totalGeneralSeats,
-                            color: AppColors.generalAccent,
-                          ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildSeatAvailabilityItem(
+                                label: 'Limited Zone',
+                                avail: limitedAvail,
+                                total: bus.totalLimitedSeats,
+                                color: AppColors.limitedAccent,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildSeatAvailabilityItem(
+                                label: 'Standing',
+                                avail: standingAvail,
+                                total: bus.totalStanding,
+                                color: AppColors.standingAccent,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildSeatAvailabilityItem(
-                            label: 'Limited Zone',
-                            avail: bus.availableLimitedSeats,
-                            total: bus.totalLimitedSeats,
-                            color: AppColors.limitedAccent,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildSeatAvailabilityItem(
-                            label: 'Standing',
-                            avail: bus.availableStanding,
-                            total: bus.totalStanding,
-                            color: AppColors.standingAccent,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
 
@@ -921,40 +936,52 @@ class _SearchScreenState extends State<SearchScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.priorityBg,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                '${bus.availablePrioritySeats} Priority',
-                                style: const TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.priorityText),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.generalBg,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                '${bus.availableGeneralSeats} General',
-                                style: const TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.generalText),
-                              ),
-                            ),
-                          ],
+                        // Live counts come from real active seat_allocations
+                        // docs via LiveOccupancyService; until that stream
+                        // has data (or if it errors), this falls back to the
+                        // bus's static counters exactly as before.
+                        StreamBuilder<Map<String, int>>(
+                          stream: LiveOccupancyService().availableSeatsFor(bus.busId),
+                          builder: (context, snapshot) {
+                            final live = snapshot.data;
+                            final priorityAvail = live?['priority'] ?? bus.availablePrioritySeats;
+                            final generalAvail = live?['general'] ?? bus.availableGeneralSeats;
+                            return Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.priorityBg,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    '$priorityAvail Priority',
+                                    style: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.priorityText),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.generalBg,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    '$generalAvail General',
+                                    style: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.generalText),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                         OutlinedButton(
                           onPressed: () {

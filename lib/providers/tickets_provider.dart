@@ -84,4 +84,9 @@ class TicketsProvider with ChangeNotifier {
     _tickets.removeWhere((t) => t.ticketId == ticketId);
     notifyListeners();
   }
+
+  void clear() {
+    _tickets.clear();
+    notifyListeners();
+  }
 }

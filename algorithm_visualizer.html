@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>SafeBoard — Seat Allocation Rule Engine</title>
+<style>
+  body { margin:0; font-family: 'Segoe UI', sans-serif; background:#0d1b2a; color:#e0e6ed; }
+  header { background:#1F3864; padding:20px 30px; }
+  header h1 { margin:0; font-size:20px; }
+  header p { margin:4px 0 0; color:#9fb3c8; font-size:13px; }
+  #banner { padding:16px 30px; font-size:22px; font-weight:600; color:#e0e6ed; border-bottom:1px solid #223a5e; min-height:30px; }
+  #banner.selected { color:#4ade80; }
+  #bannerRow { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+  #clearBtn { margin:0 30px; padding:8px 16px; background:#223a5e; color:#e0e6ed; border:1px solid #35547f; border-radius:6px; cursor:pointer; font-size:13px; }
+  #clearBtn:hover { background:#2c4a75; }
+  #log { padding:20px 30px; max-width:900px; }
+  .step { padding:10px 14px; margin-bottom:8px; border-radius:6px; opacity:0; animation:fadein 0.3s forwards; font-size:14px; line-height:1.5; }
+  .safe { background:#123524; border-left:4px solid #4ade80; }
+  .unsafe { background:#3a1d1d; border-left:4px solid #f87171; }
+  .info { background:#16233b; border-left:4px solid #60a5fa; }
+  .final { background:#1F3864; border-left:4px solid #facc15; font-weight:600; font-size:16px; }
+  @keyframes fadein { to { opacity:1; } }
+  #waiting { padding:40px 30px; color:#6b7d93; font-size:15px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>SafeBoard — Live Seat Allocation Rule Engine</h1>
+  <p>Watches the gender-proximity allocation algorithm run in real time, straight from Firestore.</p>
+</header>
+<div id="bannerRow">
+  <div id="banner">Waiting for the next booking…</div>
+  <button id="clearBtn" onclick="resetView()">Clear</button>
+</div>
+<div id="waiting">Book a seat on the passenger app to see the rule engine evaluate it here.</div>
+<div id="log"></div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBgpZIubVhI3JFkkq0h2KsAb7vhf7l9LWU",
+    authDomain: "safeboard-28745.firebaseapp.com",
+    projectId: "safeboard-28745",
+    storageBucket: "safeboard-28745.firebasestorage.app",
+    messagingSenderId: "388637855338",
+    appId: "1:388637855338:web:cc7fed7e36725613690413"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const banner = document.getElementById('banner');
+  const logEl = document.getElementById('log');
+  const waitingEl = document.getElementById('waiting');
+  let lastId = null;
+  let initialized = false;
+
+  const q = query(collection(db, "allocation_trace"), orderBy("created_at", "desc"), limit(1));
+
+  onSnapshot(q, (snapshot) => {
+    if (snapshot.empty) return;
+    const doc = snapshot.docs[0];
+    if (!initialized) {
+      initialized = true;
+      lastId = doc.id;
+      resetView();
+      return;
+    }
+    if (doc.id === lastId) return;
+    lastId = doc.id;
+    const data = doc.data();
+    playTrace(data);
+  });
+
+  function resetView() {
+    banner.className = '';
+    banner.textContent = 'Waiting for the next booking…';
+    logEl.innerHTML = '';
+    waitingEl.style.display = '';
+  }
+  window.resetView = resetView;
+
+  function playTrace(data) {
+    waitingEl.style.display = 'none';
+    logEl.innerHTML = '';
+    banner.className = '';
+    banner.textContent = `New booking — passenger gender: ${data.passenger_gender}`;
+    const steps = data.steps || [];
+    let i = 0;
+    function next() {
+      if (i >= steps.length) {
+        const finalDiv = document.createElement('div');
+        finalDiv.className = 'step final';
+        finalDiv.textContent = `FINAL DECISION → Seat ${data.selected_seat} (${data.selected_zone} zone)`;
+        logEl.appendChild(finalDiv);
+        banner.textContent = `Selected: Seat ${data.selected_seat}`;
+        banner.className = 'selected';
+        return;
+      }
+      const s = steps[i];
+      const div = document.createElement('div');
+      if (s.type === 'zone_start' || s.type === 'info') {
+        div.className = 'step info';
+        div.textContent = s.note || `Now checking ${s.zone} zone...`;
+      } else {
+        div.className = 'step ' + (s.gender_safe ? 'safe' : 'unsafe');
+        const neighborsText = Object.entries(s.neighbor_genders || {})
+          .map(([seat, g]) => `${seat}: ${g || 'empty'}`).join(', ');
+        div.textContent = `Checking seat ${s.seat} (${s.zone}) — neighbors [${neighborsText}] — ` +
+          (s.gender_safe ? 'SAFE, no opposite-gender neighbor' : 'REJECTED, opposite-gender neighbor found');
+      }
+      logEl.appendChild(div);
+      i++;
+      setTimeout(next, 450);
+    }
+    next();
+  }
+</script>
+</body>
+</html>

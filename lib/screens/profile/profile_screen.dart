@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/tickets_provider.dart';
+import '../../providers/booking_provider.dart';
 import '../../models/passenger.dart';
 import '../../constants/colors.dart';
 import '../../widgets/app_bottom_nav_bar.dart';
@@ -281,6 +283,8 @@ class ProfileScreen extends StatelessWidget {
                     label: 'Sign out',
                     color: AppColors.emergencyRed,
                     onPressed: () async {
+                      Provider.of<TicketsProvider>(context, listen: false).clear();
+                      Provider.of<BookingProvider>(context, listen: false).resetSearchAndSelection();
                       await authProvider.signOut();
                       if (context.mounted) {
                         context.go('/welcome');

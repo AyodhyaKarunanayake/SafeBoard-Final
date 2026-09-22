@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/passenger.dart';
 import '../models/seat_allocation.dart';
 import 'analytics_service.dart';
+import 'allocation_trace_service.dart';
 
 // Thrown when a bus's 64 seats AND its 6 standing spots are all taken.
 class SeatAllocationException implements Exception {
@@ -246,13 +247,43 @@ class AllocationService {
     return rowCompare != 0 ? rowCompare : a.compareTo(b);
   }
 
-  // Nearest-to-front free priority seat - no cost-scoring, priority
-  // passengers always get the closest available seat to the front door.
-  String? _pickNearestPrioritySeat(_BusSeatMap map, Set<String> exclude) {
+  // Nearest-to-front free priority seat, gender-safety hard-filtered the
+  // same way General/Limited are: among free priority seats (sorted by
+  // row/letter), prefer the nearest one with no opposite-gender neighbour;
+  // if every free priority seat has one, fall back to the plain nearest
+  // free seat, so a priority-need passenger is never rejected outright just
+  // because no gender-safe seat exists.
+  //
+  // [steps], if non-null, records every free seat considered - purely for
+  // the optional viva-demo trace below (see AllocationTraceService).
+  String? _pickNearestPrioritySeat(
+    _BusSeatMap map,
+    Set<String> exclude, {
+    String gender = '',
+    List<Map<String, dynamic>>? steps,
+  }) {
     final free = map.freeSeatsIn('priority').where((s) => !exclude.contains(s)).toList();
     if (free.isEmpty) return null;
     free.sort(_compareByRowThenLetter);
-    return free.first;
+
+    if (steps != null) {
+      for (final seat in free) {
+        final neighbors = _neighborsOf(seat);
+        steps.add({
+          'order': steps.length,
+          'seat': seat,
+          'zone': 'priority',
+          'neighbors': neighbors,
+          'neighbor_genders': {for (final n in neighbors) n: map.seatGender[n]},
+          'gender_safe': _isGenderSafeSeat(map, seat, gender),
+          'passenger_gender': gender,
+        });
+      }
+    }
+
+    final genderSafe = free.where((s) => _isGenderSafeSeat(map, s, gender)).toList();
+    final candidates = genderSafe.isNotEmpty ? genderSafe : free;
+    return candidates.first;
   }
 
   // Two-stage selection, used for both General and Limited zones:
@@ -262,9 +293,34 @@ class AllocationService {
   //   (alphabetical tiebreak); if nothing survives the hard filter (every
   //   free seat has an opposite-gender neighbour), fall back to the same
   //   tiebreak across every free seat in the zone, ignoring gender.
-  String? _pickBestScoredSeat(_BusSeatMap map, String zone, String gender, Set<String> exclude) {
+  //
+  // [steps], if non-null, records every free seat considered - purely for
+  // the optional viva-demo trace below (see AllocationTraceService) - and
+  // never changes which seat is returned.
+  String? _pickBestScoredSeat(
+    _BusSeatMap map,
+    String zone,
+    String gender,
+    Set<String> exclude, {
+    List<Map<String, dynamic>>? steps,
+  }) {
     final free = map.freeSeatsIn(zone).where((s) => !exclude.contains(s)).toList();
     if (free.isEmpty) return null;
+
+    if (steps != null) {
+      for (final seat in free) {
+        final neighbors = _neighborsOf(seat);
+        steps.add({
+          'order': steps.length,
+          'seat': seat,
+          'zone': zone,
+          'neighbors': neighbors,
+          'neighbor_genders': {for (final n in neighbors) n: map.seatGender[n]},
+          'gender_safe': _isGenderSafeSeat(map, seat, gender),
+          'passenger_gender': gender,
+        });
+      }
+    }
 
     final genderSafe = free.where((s) => _isGenderSafeSeat(map, s, gender)).toList();
     final candidates = genderSafe.isNotEmpty ? genderSafe : free;
@@ -283,35 +339,66 @@ class AllocationService {
   // general -> limited -> standing -> reject. Used both for a single-seat
   // booking and as the per-passenger fallback when a group can't be seated
   // together.
-  _AllocResult _allocateOne(_BusSeatMap map, Passenger passenger, Set<String> exclude) {
+  // [journeyId] is only used to label the optional viva-demo trace this
+  // method fires off (see AllocationTraceService) - it plays no part in
+  // which seat gets picked.
+  _AllocResult _allocateOne(_BusSeatMap map, Passenger passenger, Set<String> exclude, String journeyId) {
+    final steps = <Map<String, dynamic>>[];
+
+    // Fire-and-forget, never awaited - trace logging must never delay or
+    // block a real booking, and its failure (see AllocationTraceService)
+    // can never surface here either.
+    _AllocResult finish(_AllocResult r) {
+      AllocationTraceService().writeTrace(
+        journeyId: journeyId,
+        passengerGender: passenger.gender,
+        steps: steps,
+        selectedSeat: r.seatNumber,
+        selectedZone: r.zone,
+      );
+      return r;
+    }
+
     var priorityReserved = false;
     if (_isPriorityEligible(passenger)) {
       final freeCount = map.freeSeatsIn('priority').where((s) => !exclude.contains(s)).length;
       final hasStrongPriorityNeed = passenger.mobilityStatus != 'none' || passenger.pregnant;
       if (freeCount <= _priorityReserveThreshold && !hasStrongPriorityNeed) {
         priorityReserved = true; // safetyPreference-only - falls through, flagged for the UI
+        steps.add({
+          'order': steps.length,
+          'type': 'info',
+          'note': 'Priority-reserve buffer: <= $_priorityReserveThreshold free priority seats left, '
+              'and this passenger only qualifies via safety preference, so priority is held back and '
+              'they fall through to General instead.',
+        });
       } else {
-        final seat = _pickNearestPrioritySeat(map, exclude);
-        if (seat != null) return _AllocResult(seat, 'priority', 0.05);
+        final seat = _pickNearestPrioritySeat(map, exclude, gender: passenger.gender, steps: steps);
+        if (seat != null) return finish(_AllocResult(seat, 'priority', 0.05));
       }
     }
 
-    final generalSeat = _pickBestScoredSeat(map, 'general', passenger.gender, exclude);
+    steps.add({'order': steps.length, 'type': 'info', 'note': 'Moving to General zone.'});
+    final generalSeat = _pickBestScoredSeat(map, 'general', passenger.gender, exclude, steps: steps);
     if (generalSeat != null) {
       final risk = 0.1 + (_isGenderSafeSeat(map, generalSeat, passenger.gender) ? 0.0 : 0.15);
-      return _AllocResult(generalSeat, 'general', risk, priorityReserved: priorityReserved);
+      return finish(_AllocResult(generalSeat, 'general', risk, priorityReserved: priorityReserved));
     }
 
-    final limitedSeat = _pickBestScoredSeat(map, 'limited', passenger.gender, exclude);
+    steps.add({'order': steps.length, 'type': 'info', 'note': 'General zone full. Moving to Limited zone.'});
+    final limitedSeat = _pickBestScoredSeat(map, 'limited', passenger.gender, exclude, steps: steps);
     if (limitedSeat != null) {
       final risk = 0.2 + (_isGenderSafeSeat(map, limitedSeat, passenger.gender) ? 0.0 : 0.15);
-      return _AllocResult(limitedSeat, 'limited', risk, priorityReserved: priorityReserved);
+      return finish(_AllocResult(limitedSeat, 'limited', risk, priorityReserved: priorityReserved));
     }
 
+    steps.add({'order': steps.length, 'type': 'info', 'note': 'Limited zone full. Moving to Standing.'});
     if (!map.standingFull) {
       final slot = map.standingOccupied + 1;
       final ratio = map.standingOccupied / kStandingCapacity;
-      return _AllocResult('Standing-$slot', 'standing', 0.5 + ratio * 0.3, priorityReserved: priorityReserved);
+      return finish(
+        _AllocResult('Standing-$slot', 'standing', 0.5 + ratio * 0.3, priorityReserved: priorityReserved),
+      );
     }
 
     throw const SeatAllocationException(
@@ -481,7 +568,7 @@ class AllocationService {
 
     final _AllocResult result;
     try {
-      result = _allocateOne(map, passenger, excludeSeats);
+      result = _allocateOne(map, passenger, excludeSeats, journeyId);
     } on SeatAllocationException {
       _analytics.logEvent(
         eventType: 'allocation_rejected',
@@ -599,7 +686,7 @@ class AllocationService {
       for (final p in ordered) {
         final _AllocResult result;
         try {
-          result = _allocateOne(map, p, const {});
+          result = _allocateOne(map, p, const {}, journeyId);
         } on SeatAllocationException {
           _analytics.logEvent(
             eventType: 'allocation_rejected',

@@ -457,6 +457,21 @@ class BookingProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void resetSearchAndSelection() {
+    _selectedRoute = null;
+    _selectedBus = null;
+    _boardingStop = null;
+    _alightingStop = null;
+    _searchDate = null;
+    _searchTime = null;
+    _searchBoardingStop = null;
+    _searchAlightingStop = null;
+    _seatCount = 1;
+    _companions.clear();
+    _travelingTogether = false;
+    notifyListeners();
+  }
+
   // Used by "Book again" on a past trip in History: pre-fills only the
   // boarding/alighting stops, leaving date and time unset so the passenger
   // still has to explicitly choose a fresh date/time rather than silently
