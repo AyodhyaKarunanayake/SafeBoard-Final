@@ -238,11 +238,20 @@ exports.allocateSeat = functions.https.onRequest(async (req, res) => {
       return rowOfSeat(a) - rowOfSeat(b) || a.localeCompare(b);
     }
 
-    function pickNearestPrioritySeat(exclude) {
+    // Nearest-to-front free priority seat, gender-safety hard-filtered the
+    // same way General/Limited are: among free priority seats (sorted by
+    // row/letter), prefer the nearest one with no opposite-gender
+    // neighbour; if every free priority seat has one, fall back to the
+    // plain nearest free seat, so a priority-need passenger is never
+    // rejected outright just because no gender-safe seat exists.
+    function pickNearestPrioritySeat(exclude, gender) {
       const free = allSeatsInZone("priority").filter((s) => isFree(s) && !exclude.has(s));
       if (free.length === 0) return null;
       free.sort(compareByRowThenLetter);
-      return free[0];
+
+      const genderSafe = free.filter((s) => isGenderSafeSeat(s, gender));
+      const candidates = genderSafe.length > 0 ? genderSafe : free;
+      return candidates[0];
     }
 
     // Two-stage selection, used for both General and Limited zones:
@@ -337,7 +346,7 @@ exports.allocateSeat = functions.https.onRequest(async (req, res) => {
         if (freeCount <= PRIORITY_RESERVE_THRESHOLD && !hasStrongPriorityNeed) {
           priorityReserved = true; // safety_preference-only - falls through, flagged for the UI
         } else {
-          const seat = pickNearestPrioritySeat(exclude);
+          const seat = pickNearestPrioritySeat(exclude, passenger.gender);
           if (seat) return { seatNumber: seat, zone: "priority", riskScore: 0.05, priorityReserved: false };
         }
       }
